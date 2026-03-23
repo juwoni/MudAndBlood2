@@ -45,6 +45,8 @@
 Binaries/*
 Plugins/*/Binaries/*
 
+Content/ParagonGreystone
+
 # Builds
 Build/*
 
