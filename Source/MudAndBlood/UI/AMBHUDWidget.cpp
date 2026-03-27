@@ -2,6 +2,8 @@
 
 #include "AMBCharacter.h"
 #include "GameFramework/PlayerController.h"
+#include "Inventory/AMBInventoryComponent.h"
+#include "Inventory/AMBItemData.h"
 #include "MudAndBlood.h"
 
 void UAMBHUDWidget::NativeConstruct()
@@ -40,6 +42,32 @@ void UAMBHUDWidget::RefreshCombatStyle()
 	}
 }
 
+void UAMBHUDWidget::SelectInventorySlot(int32 SlotIndex)
+{
+	if (UAMBInventoryComponent* InventoryComponent = GetInventoryComponent())
+	{
+		InventoryComponent->SelectInventorySlot(SlotIndex);
+		return;
+	}
+
+	UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot select inventory slot %d: owning inventory component was not found."),
+		*GetNameSafe(this),
+		SlotIndex);
+}
+
+void UAMBHUDWidget::SetInventorySlotItem(int32 SlotIndex, UAMBItemData* ItemData)
+{
+	if (UAMBInventoryComponent* InventoryComponent = GetInventoryComponent())
+	{
+		InventoryComponent->SetItemInSlot(SlotIndex, ItemData);
+		return;
+	}
+
+	UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot set inventory slot %d: owning inventory component was not found."),
+		*GetNameSafe(this),
+		SlotIndex);
+}
+
 AAMBCharacter* UAMBHUDWidget::GetAMBCharacter() const
 {
 	if (CachedCharacter)
@@ -50,6 +78,16 @@ AAMBCharacter* UAMBHUDWidget::GetAMBCharacter() const
 	if (APlayerController* PlayerController = GetOwningPlayer())
 	{
 		return Cast<AAMBCharacter>(PlayerController->GetPawn());
+	}
+
+	return nullptr;
+}
+
+UAMBInventoryComponent* UAMBHUDWidget::GetInventoryComponent() const
+{
+	if (const AAMBCharacter* Character = GetAMBCharacter())
+	{
+		return Character->GetInventoryComponent();
 	}
 
 	return nullptr;
@@ -73,6 +111,26 @@ EAMBCombatStyleType UAMBHUDWidget::GetCurrentCombatStyleType() const
 	}
 
 	return EAMBCombatStyleType::Unarmed;
+}
+
+int32 UAMBHUDWidget::GetSelectedInventorySlotIndex() const
+{
+	if (const UAMBInventoryComponent* InventoryComponent = GetInventoryComponent())
+	{
+		return InventoryComponent->GetSelectedSlotIndex();
+	}
+
+	return INDEX_NONE;
+}
+
+UAMBItemData* UAMBHUDWidget::GetInventorySlotItem(int32 SlotIndex) const
+{
+	if (const UAMBInventoryComponent* InventoryComponent = GetInventoryComponent())
+	{
+		return InventoryComponent->GetItemInSlot(SlotIndex);
+	}
+
+	return nullptr;
 }
 
 void UAMBHUDWidget::HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType, UAMBCombatStyleData* CombatStyleData)

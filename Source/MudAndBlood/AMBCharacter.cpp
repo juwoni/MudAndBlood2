@@ -6,9 +6,9 @@
 #include "AbilitySystem/AMBCombatAttributeSet.h"
 #include "AbilitySystem/AMBGameplayTags.h"
 #include "EnhancedInputComponent.h"
+#include "Inventory/AMBInventoryComponent.h"
 #include "MudAndBlood.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"
-#include "Variant_Combat/Data/AMBCombatStyleData.h"
 
 // Sets default values
 AAMBCharacter::AAMBCharacter()
@@ -20,6 +20,7 @@ AAMBCharacter::AAMBCharacter()
 	AbilitySystemComponent->SetIsReplicated(true);
 	CombatAttributeSet = CreateDefaultSubobject<UAMBCombatAttributeSet>(TEXT("CombatAttributeSet"));
 	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
+	InventoryComponent = CreateDefaultSubobject<UAMBInventoryComponent>(TEXT("InventoryComponent"));
 }
 
 UAbilitySystemComponent* AAMBCharacter::GetAbilitySystemComponent() const
@@ -42,8 +43,8 @@ void AAMBCharacter::BeginPlay()
 
 	if (CombatSlot1Style)
 	{
-		SetCombatStyle(CombatSlot1Style);
 		CurrentCombatSlotIndex = 1;
+		SetCombatStyle(CombatSlot1Style);
 		return;
 	}
 
@@ -218,6 +219,11 @@ EAMBCombatStyleType AAMBCharacter::ResolveCombatStyleType(const UAMBCombatStyleD
 		return EAMBCombatStyleType::Unarmed;
 	}
 
+	if (CombatStyleData->CombatStyleType != EAMBCombatStyleType::Unarmed || CombatStyleData == UnarmedCombatStyle)
+	{
+		return CombatStyleData->CombatStyleType;
+	}
+
 	if (CombatStyleData == SwordCombatStyle)
 	{
 		return EAMBCombatStyleType::Sword;
@@ -279,6 +285,26 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 	OnCombatStyleChanged.Broadcast(CurrentCombatSlotIndex, CurrentCombatStyleType, CurrentCombatStyle);
 }
 
+void AAMBCharacter::SetDefaultCombatStyle(UAMBCombatStyleData* NewDefaultCombatStyle, int32 SourceSlotIndex)
+{
+	const bool bSlotChanged = SourceSlotIndex != INDEX_NONE && CurrentCombatSlotIndex != SourceSlotIndex;
+	const bool bStyleChanged = CurrentCombatStyle != NewDefaultCombatStyle;
+
+	DefaultCombatStyle = NewDefaultCombatStyle;
+
+	if (SourceSlotIndex != INDEX_NONE)
+	{
+		CurrentCombatSlotIndex = SourceSlotIndex;
+	}
+
+	SetCombatStyle(NewDefaultCombatStyle);
+
+	if (!bStyleChanged && bSlotChanged)
+	{
+		OnCombatStyleChanged.Broadcast(CurrentCombatSlotIndex, CurrentCombatStyleType, CurrentCombatStyle);
+	}
+}
+
 void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
 {
 	UAMBCombatStyleData* CombatStyle = GetConfiguredCombatStyle(CombatStyleType);
@@ -319,7 +345,7 @@ void AAMBCharacter::EquipCombatSlot(int32 SlotIndex)
 		SlotIndex,
 		*GetNameSafe(CombatStyle));
 
-	SetCombatStyle(CombatStyle);
+	SetDefaultCombatStyle(CombatStyle, SlotIndex);
 }
 
 void AAMBCharacter::DoAttackTrace(FName DamageSourceBone)

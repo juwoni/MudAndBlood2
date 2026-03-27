@@ -8,6 +8,14 @@
 class UAnimMontage;
 class UGameplayAbility;
 
+UENUM(BlueprintType)
+enum class EAMBCombatStyleType : uint8
+{
+	Unarmed,
+	Sword,
+	Bow
+};
+
 USTRUCT(BlueprintType)
 struct FAMBCombatAbilityGrant
 {
@@ -26,6 +34,9 @@ class MUDANDBLOOD_API UAMBCombatStyleData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
+	EAMBCombatStyleType CombatStyleType = EAMBCombatStyleType::Unarmed;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat")
 	FGameplayTag CombatStyleTag;
 

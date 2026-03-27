@@ -8,22 +8,15 @@
 #include "GameplayTagContainer.h"
 #include "GameFramework/Character.h"
 #include "CombatAttacker.h"
+#include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "AMBCharacter.generated.h"
 
 class UAbilitySystemComponent;
 class UAMBAbilitySystemComponent;
 class UAMBCombatAttributeSet;
-class UAMBCombatStyleData;
+class UAMBInventoryComponent;
 class UCombatAttackComponent;
 class UInputAction;
-
-UENUM(BlueprintType)
-enum class EAMBCombatStyleType : uint8
-{
-	Unarmed,
-	Sword,
-	Bow
-};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAMBCombatStyleChangedSignature, int32, SlotIndex, EAMBCombatStyleType, CombatStyleType, UAMBCombatStyleData*, CombatStyleData);
 
@@ -50,6 +43,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCombatAttackComponent> CombatAttackComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAMBInventoryComponent> InventoryComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
 	TObjectPtr<UAMBCombatStyleData> DefaultCombatStyle;
@@ -123,6 +119,9 @@ public:
 	void SetCombatStyle(UAMBCombatStyleData* NewCombatStyle);
 
 	UFUNCTION(BlueprintCallable, Category="Combat|Style")
+	void SetDefaultCombatStyle(UAMBCombatStyleData* NewDefaultCombatStyle, int32 SourceSlotIndex);
+
+	UFUNCTION(BlueprintCallable, Category="Combat|Style")
 	void EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType);
 
 	UFUNCTION(BlueprintCallable, Category="Combat|Style")
@@ -149,5 +148,6 @@ public:
 
 	FORCEINLINE UAMBAbilitySystemComponent* GetAMBAbilitySystemComponent() const { return AbilitySystemComponent; }
 	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const { return CombatAttackComponent; }
+	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
 };
