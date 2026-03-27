@@ -2,6 +2,7 @@
 
 #include "Variant_Combat/Components/CombatAttackComponent.h"
 
+#include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "CombatDamageable.h"
@@ -188,6 +189,35 @@ void UCombatAttackComponent::NotifyEnemiesOfIncomingAttack()
 
 		Damageable->NotifyDanger(CharacterOwner->GetActorLocation(), CharacterOwner);
 	}
+}
+
+void UCombatAttackComponent::ApplyCombatStyleData(UAMBCombatStyleData* CombatStyleData)
+{
+	if (!CombatStyleData)
+	{
+		return;
+	}
+
+	CachedAttackInputTime = 0.0f;
+	bIsAttacking = false;
+	ComboCount = 0;
+	bIsChargingAttack = false;
+	bHasLoopedChargedAttack = false;
+
+	AttackInputCacheTimeTolerance = CombatStyleData->AttackInputCacheTimeTolerance;
+	MeleeTraceDistance = CombatStyleData->MeleeTraceDistance;
+	MeleeTraceRadius = CombatStyleData->MeleeTraceRadius;
+	DangerTraceDistance = CombatStyleData->DangerTraceDistance;
+	DangerTraceRadius = CombatStyleData->DangerTraceRadius;
+	MeleeDamage = CombatStyleData->MeleeDamage;
+	MeleeKnockbackImpulse = CombatStyleData->MeleeKnockbackImpulse;
+	MeleeLaunchImpulse = CombatStyleData->MeleeLaunchImpulse;
+	ComboAttackMontage = CombatStyleData->ComboAttackMontage;
+	ComboSectionNames = CombatStyleData->ComboSectionNames;
+	ComboInputCacheTimeTolerance = CombatStyleData->ComboInputCacheTimeTolerance;
+	ChargedAttackMontage = CombatStyleData->ChargedAttackMontage;
+	ChargeLoopSection = CombatStyleData->ChargeLoopSection;
+	ChargeAttackSection = CombatStyleData->ChargeAttackSection;
 }
 
 void UCombatAttackComponent::ComboAttack()

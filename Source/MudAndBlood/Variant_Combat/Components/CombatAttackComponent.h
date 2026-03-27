@@ -9,6 +9,7 @@
 
 class ACharacter;
 class UAnimMontage;
+class UAMBCombatStyleData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCombatAttackDamageDealtSignature, float, Damage, FVector, ImpactPoint);
 
@@ -55,6 +56,10 @@ public:
 	/** Notifies nearby enemies that an attack is coming so they can react */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
 	virtual void NotifyEnemiesOfIncomingAttack();
+
+	/** Applies a style data asset so the same component can be reused by multiple weapon types */
+	UFUNCTION(BlueprintCallable, Category="Combat|Style")
+	void ApplyCombatStyleData(UAMBCombatStyleData* CombatStyleData);
 
 	/** Broadcast after successfully dealing damage so the owner can play VFX/SFX */
 	UPROPERTY(BlueprintAssignable, Category="Combat|Attack")
