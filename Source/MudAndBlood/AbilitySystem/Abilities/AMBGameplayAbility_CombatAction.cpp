@@ -16,7 +16,6 @@ void UAMBGameplayAbility_CombatAction::ActivateAbility(
 	const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
 	
 	AAMBCharacter* Character = GetCombatCharacterFromActorInfo();
 	if (!Character)
@@ -25,7 +24,6 @@ void UAMBGameplayAbility_CombatAction::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
-
 	
 	switch (CombatAction)
 	{
