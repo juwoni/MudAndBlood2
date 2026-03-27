@@ -40,7 +40,7 @@ bool UAMBInventoryComponent::SetItemInSlot(int32 SlotIndex, UAMBItemData* ItemDa
 		return false;
 	}
 
-	InventoryItems[SlotIndex - 1] = ItemData;
+	InventoryItems[SlotIndex] = ItemData;
 	OnInventorySlotChanged.Broadcast(SlotIndex, ItemData);
 
 	if (SelectedSlotIndex == SlotIndex)
