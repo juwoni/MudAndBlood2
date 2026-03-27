@@ -54,6 +54,7 @@ bool UAMBInventoryComponent::SetItemInSlot(int32 SlotIndex, UAMBItemData* ItemDa
 
 bool UAMBInventoryComponent::SelectInventorySlot(int32 SlotIndex)
 {
+	
 	if (!IsValidInventorySlot(SlotIndex))
 	{
 		return false;
@@ -70,12 +71,13 @@ bool UAMBInventoryComponent::SelectInventorySlot(int32 SlotIndex)
 
 UAMBItemData* UAMBInventoryComponent::GetItemInSlot(int32 SlotIndex) const
 {
+	
 	if (!IsValidInventorySlot(SlotIndex))
 	{
 		return nullptr;
 	}
 
-	return InventoryItems[SlotIndex - 1];
+	return InventoryItems[SlotIndex];
 }
 
 UAMBItemData* UAMBInventoryComponent::GetSelectedItem() const
@@ -85,7 +87,7 @@ UAMBItemData* UAMBInventoryComponent::GetSelectedItem() const
 
 bool UAMBInventoryComponent::IsValidInventorySlot(int32 SlotIndex) const
 {
-	return SlotIndex > 0 && InventoryItems.IsValidIndex(SlotIndex - 1);
+	return InventoryItems.IsValidIndex(SlotIndex);
 }
 
 void UAMBInventoryComponent::ApplyCombatStyleFromItem(int32 SlotIndex, UAMBItemData* ItemData)
