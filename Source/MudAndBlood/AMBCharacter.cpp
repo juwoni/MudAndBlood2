@@ -40,6 +40,13 @@ void AAMBCharacter::BeginPlay()
 		return;
 	}
 
+	if (CombatSlot1Style)
+	{
+		SetCombatStyle(CombatSlot1Style);
+		CurrentCombatSlotIndex = 1;
+		return;
+	}
+
 	if (UnarmedCombatStyle)
 	{
 		SetCombatStyle(UnarmedCombatStyle);
@@ -191,6 +198,39 @@ UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatStyle(EAMBCombatStyleType
 	}
 }
 
+UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatSlotStyle(int32 SlotIndex) const
+{
+	switch (SlotIndex)
+	{
+	case 1:
+		return CombatSlot1Style;
+	case 2:
+		return CombatSlot2Style;
+	default:
+		return nullptr;
+	}
+}
+
+EAMBCombatStyleType AAMBCharacter::ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const
+{
+	if (!CombatStyleData)
+	{
+		return EAMBCombatStyleType::Unarmed;
+	}
+
+	if (CombatStyleData == SwordCombatStyle)
+	{
+		return EAMBCombatStyleType::Sword;
+	}
+
+	if (CombatStyleData == BowCombatStyle)
+	{
+		return EAMBCombatStyleType::Bow;
+	}
+
+	return EAMBCombatStyleType::Unarmed;
+}
+
 void AAMBCharacter::DoComboAttackStart()
 {
 	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light);
@@ -222,6 +262,7 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 
 	CurrentCombatStyle = NewCombatStyle;
 	UpdateCombatStyleTag(CurrentCombatStyle ? CurrentCombatStyle->CombatStyleTag : FGameplayTag());
+	CurrentCombatStyleType = ResolveCombatStyleType(CurrentCombatStyle);
 
 	if (CombatAttackComponent && CurrentCombatStyle)
 	{
@@ -234,6 +275,8 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 		*GetNameSafe(this),
 		*GetNameSafe(CurrentCombatStyle),
 		*CurrentCombatStyleTag.ToString());
+
+	OnCombatStyleChanged.Broadcast(CurrentCombatSlotIndex, CurrentCombatStyleType, CurrentCombatStyle);
 }
 
 void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
@@ -249,6 +292,32 @@ void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
 			*CombatStyleName);
 		return;
 	}
+
+	SetCombatStyle(CombatStyle);
+}
+
+void AAMBCharacter::SetAttackType(EAMBCombatStyleType CombatStyleType)
+{
+	EquipCombatStyleByType(CombatStyleType);
+}
+
+void AAMBCharacter::EquipCombatSlot(int32 SlotIndex)
+{
+	UAMBCombatStyleData* CombatStyle = GetConfiguredCombatSlotStyle(SlotIndex);
+	if (!CombatStyle)
+	{
+		UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot equip combat slot %d: no UAMBCombatStyleData is assigned to that slot."),
+			*GetNameSafe(this),
+			SlotIndex);
+		return;
+	}
+
+	CurrentCombatSlotIndex = SlotIndex;
+
+	UE_LOG(LogMudAndBlood, Log, TEXT("%s selected combat slot %d -> %s."),
+		*GetNameSafe(this),
+		SlotIndex,
+		*GetNameSafe(CombatStyle));
 
 	SetCombatStyle(CombatStyle);
 }

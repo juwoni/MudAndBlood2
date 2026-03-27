@@ -25,6 +25,8 @@ enum class EAMBCombatStyleType : uint8
 	Bow
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAMBCombatStyleChangedSignature, int32, SlotIndex, EAMBCombatStyleType, CombatStyleType, UAMBCombatStyleData*, CombatStyleData);
+
 UCLASS()
 class MUDANDBLOOD_API AAMBCharacter : public ACharacter, public IAbilitySystemInterface, public ICombatAttacker
 {
@@ -35,6 +37,9 @@ public:
 	AAMBCharacter();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UPROPERTY(BlueprintAssignable, Category="Combat|Style")
+	FAMBCombatStyleChangedSignature OnCombatStyleChanged;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -58,6 +63,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
 	TObjectPtr<UAMBCombatStyleData> BowCombatStyle;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Slots")
+	TObjectPtr<UAMBCombatStyleData> CombatSlot1Style;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Slots")
+	TObjectPtr<UAMBCombatStyleData> CombatSlot2Style;
+
 	UPROPERTY(EditAnywhere, Category ="Input")
 	TObjectPtr<UInputAction> ComboAttackAction;
 
@@ -71,6 +82,8 @@ protected:
 	TObjectPtr<UAMBCombatStyleData> CurrentCombatStyle;
 
 	FGameplayTag CurrentCombatStyleTag;
+	EAMBCombatStyleType CurrentCombatStyleType = EAMBCombatStyleType::Unarmed;
+	int32 CurrentCombatSlotIndex = INDEX_NONE;
 
 	TArray<FGameplayAbilitySpecHandle> GrantedCombatAbilityHandles;
 
@@ -84,6 +97,8 @@ protected:
 	void UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag);
 	bool TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const;
 	UAMBCombatStyleData* GetConfiguredCombatStyle(EAMBCombatStyleType CombatStyleType) const;
+	UAMBCombatStyleData* GetConfiguredCombatSlotStyle(int32 SlotIndex) const;
+	EAMBCombatStyleType ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const;
 
 public:	
 	// Called every frame
@@ -110,8 +125,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat|Style")
 	void EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType);
 
+	UFUNCTION(BlueprintCallable, Category="Combat|Style")
+	void SetAttackType(EAMBCombatStyleType CombatStyleType);
+
+	UFUNCTION(BlueprintCallable, Category="Combat|Style")
+	void EquipCombatSlot(int32 SlotIndex);
+
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
 	FGameplayTag GetCurrentCombatStyleTag() const { return CurrentCombatStyleTag; }
+
+	UFUNCTION(BlueprintPure, Category="Combat|Style")
+	EAMBCombatStyleType GetCurrentCombatStyleType() const { return CurrentCombatStyleType; }
+
+	UFUNCTION(BlueprintPure, Category="Combat|Style")
+	int32 GetCurrentCombatSlotIndex() const { return CurrentCombatSlotIndex; }
+
+	UFUNCTION(BlueprintPure, Category="Combat|Style")
+	UAMBCombatStyleData* GetCurrentCombatStyle() const { return CurrentCombatStyle; }
 
 	virtual void DoAttackTrace(FName DamageSourceBone) override;
 	virtual void CheckCombo() override;
