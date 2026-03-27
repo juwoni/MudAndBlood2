@@ -17,6 +17,7 @@ void UAMBGameplayAbility_CombatAction::ActivateAbility(
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
+	
 	AAMBCharacter* Character = GetCombatCharacterFromActorInfo();
 	if (!Character)
 	{
@@ -25,6 +26,7 @@ void UAMBGameplayAbility_CombatAction::ActivateAbility(
 		return;
 	}
 
+	
 	switch (CombatAction)
 	{
 	case EAMBCombatAbilityAction::ComboStart:
