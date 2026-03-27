@@ -20,6 +20,7 @@ void UAMBGameplayAbility_CombatAction::ActivateAbility(
 	AAMBCharacter* Character = GetCombatCharacterFromActorInfo();
 	if (!Character)
 	{
+		
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}

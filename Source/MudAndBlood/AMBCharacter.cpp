@@ -6,6 +6,7 @@
 #include "AbilitySystem/AMBCombatAttributeSet.h"
 #include "AbilitySystem/AMBGameplayTags.h"
 #include "EnhancedInputComponent.h"
+#include "MudAndBlood.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
 
@@ -36,6 +37,12 @@ void AAMBCharacter::BeginPlay()
 	if (DefaultCombatStyle)
 	{
 		SetCombatStyle(DefaultCombatStyle);
+		return;
+	}
+
+	if (UnarmedCombatStyle)
+	{
+		SetCombatStyle(UnarmedCombatStyle);
 	}
 }
 
@@ -140,60 +147,68 @@ void AAMBCharacter::UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag)
 
 bool AAMBCharacter::TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const
 {
-	if (!AbilitySystemComponent || !AbilitySystemComponent->HasAbilityWithInputTag(InputTag))
+	if (!AbilitySystemComponent)
 	{
+		UE_LOG(LogMudAndBlood, Warning, TEXT("%s failed to activate combat input %s: AbilitySystemComponent is missing."),
+			*GetNameSafe(this),
+			*InputTag.ToString());
 		return false;
 	}
 
-	AbilitySystemComponent->TryActivateAbilitiesByInputTag(InputTag);
-	return true;
+	if (!AbilitySystemComponent->HasAbilityWithInputTag(InputTag))
+	{
+		UE_LOG(LogMudAndBlood, Warning, TEXT("%s failed to activate combat input %s: no granted ability matches this input tag. CurrentStyle=%s"),
+			*GetNameSafe(this),
+			*InputTag.ToString(),
+			*CurrentCombatStyleTag.ToString());
+		return false;
+	}
+
+	const bool bActivated = AbilitySystemComponent->TryActivateAbilitiesByInputTag(InputTag);
+	if (!bActivated)
+	{
+		UE_LOG(LogMudAndBlood, Warning, TEXT("%s failed to activate combat input %s: matching ability exists but activation was rejected. CurrentStyle=%s"),
+			*GetNameSafe(this),
+			*InputTag.ToString(),
+			*CurrentCombatStyleTag.ToString());
+	}
+
+	return bActivated;
+}
+
+UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatStyle(EAMBCombatStyleType CombatStyleType) const
+{
+	switch (CombatStyleType)
+	{
+	case EAMBCombatStyleType::Unarmed:
+		return UnarmedCombatStyle;
+	case EAMBCombatStyleType::Sword:
+		return SwordCombatStyle;
+	case EAMBCombatStyleType::Bow:
+		return BowCombatStyle;
+	default:
+		return nullptr;
+	}
 }
 
 void AAMBCharacter::DoComboAttackStart()
 {
-	if (TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light))
-	{
-		return;
-	}
-
-	if (CombatAttackComponent)
-	{
-		CombatAttackComponent->DoComboAttackStart();
-	}
+	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light);
 }
 
 void AAMBCharacter::DoComboAttackEnd()
 {
-	if (CombatAttackComponent)
-	{
-		CombatAttackComponent->DoComboAttackEnd();
-	}
+	UE_LOG(LogMudAndBlood, Verbose, TEXT("%s received DoComboAttackEnd, but combo end is not routed directly outside GAS."), *GetNameSafe(this));
 }
 
 void AAMBCharacter::DoChargedAttackStart()
 {
-	if (TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Start))
-	{
-		return;
-	}
-
-	if (CombatAttackComponent)
-	{
-		CombatAttackComponent->DoChargedAttackStart();
-	}
+	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Start);
 }
 
 void AAMBCharacter::DoChargedAttackEnd()
 {
-	if (TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Release))
-	{
-		return;
-	}
-
-	if (CombatAttackComponent)
-	{
-		CombatAttackComponent->DoChargedAttackEnd();
-	}
+	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Release);
 }
 
 void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
@@ -214,6 +229,28 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 	}
 
 	GrantCombatStyleAbilities(CurrentCombatStyle);
+
+	UE_LOG(LogMudAndBlood, Log, TEXT("%s switched combat style to %s (Tag=%s)."),
+		*GetNameSafe(this),
+		*GetNameSafe(CurrentCombatStyle),
+		*CurrentCombatStyleTag.ToString());
+}
+
+void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
+{
+	UAMBCombatStyleData* CombatStyle = GetConfiguredCombatStyle(CombatStyleType);
+	if (!CombatStyle)
+	{
+		static const UEnum* CombatStyleEnum = StaticEnum<EAMBCombatStyleType>();
+		const FString CombatStyleName = CombatStyleEnum ? CombatStyleEnum->GetNameStringByValue(static_cast<int64>(CombatStyleType)) : TEXT("Unknown");
+
+		UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot equip combat style %s: no style asset is assigned on the character."),
+			*GetNameSafe(this),
+			*CombatStyleName);
+		return;
+	}
+
+	SetCombatStyle(CombatStyle);
 }
 
 void AAMBCharacter::DoAttackTrace(FName DamageSourceBone)
