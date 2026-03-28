@@ -28,6 +28,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category="HUD|Inventory")
 	TArray<TObjectPtr<UItemBoxWidget>> ItemBoxArray;
 
+	UPROPERTY(BlueprintReadWrite, Category="HUD|Inventory")
+	int32 SelectedItemBoxIndex;
+
 	UFUNCTION(BlueprintCallable, Category="HUD|Inventory")
 	void UpdateBoxes();
 
