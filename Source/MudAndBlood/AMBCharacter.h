@@ -17,6 +17,9 @@ class UAMBCombatAttributeSet;
 class UAMBInventoryComponent;
 class UCombatAttackComponent;
 class UInputAction;
+class UAMBItemData;
+class USceneComponent;
+class UStaticMeshComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAMBCombatStyleChangedSignature, int32, SlotIndex, EAMBCombatStyleType, CombatStyleType, UAMBCombatStyleData*, CombatStyleData);
 
@@ -46,6 +49,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAMBInventoryComponent> InventoryComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> EquippedItemMeshComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
 	TObjectPtr<UAMBCombatStyleData> DefaultCombatStyle;
@@ -90,6 +96,8 @@ protected:
 	void InitializeAbilityActorInfo();
 	void ClearGrantedCombatAbilities();
 	void GrantCombatStyleAbilities(const UAMBCombatStyleData* CombatStyleData);
+	USceneComponent* GetEquippedItemAttachComponent() const;
+	void UpdateEquippedItemMesh(UAMBItemData* ItemData);
 	void UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag);
 	bool TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const;
 	UAMBCombatStyleData* GetConfiguredCombatStyle(EAMBCombatStyleType CombatStyleType) const;
@@ -130,6 +138,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat|Style")
 	void EquipCombatSlot(int32 SlotIndex);
 
+	UFUNCTION()
+	void HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* ItemData);
+
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
 	FGameplayTag GetCurrentCombatStyleTag() const { return CurrentCombatStyleTag; }
 
@@ -149,5 +160,6 @@ public:
 	FORCEINLINE UAMBAbilitySystemComponent* GetAMBAbilitySystemComponent() const { return AbilitySystemComponent; }
 	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const { return CombatAttackComponent; }
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+	FORCEINLINE UStaticMeshComponent* GetEquippedItemMeshComponent() const { return EquippedItemMeshComponent; }
 
 };

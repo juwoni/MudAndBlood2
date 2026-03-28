@@ -5,15 +5,20 @@
 #include "AbilitySystem/AMBAbilitySystemComponent.h"
 #include "AbilitySystem/AMBCombatAttributeSet.h"
 #include "AbilitySystem/AMBGameplayTags.h"
+#include "Components/ChildActorComponent.h"
+#include "Components/MeshComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Inventory/AMBInventoryComponent.h"
+#include "Inventory/AMBItemData.h"
 #include "MudAndBlood.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"
 
 // Sets default values
 AAMBCharacter::AAMBCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAMBAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -21,6 +26,11 @@ AAMBCharacter::AAMBCharacter()
 	CombatAttributeSet = CreateDefaultSubobject<UAMBCombatAttributeSet>(TEXT("CombatAttributeSet"));
 	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
 	InventoryComponent = CreateDefaultSubobject<UAMBInventoryComponent>(TEXT("InventoryComponent"));
+	EquippedItemMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EquippedItemMeshComponent"));
+	EquippedItemMeshComponent->SetupAttachment(GetMesh());
+	EquippedItemMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	EquippedItemMeshComponent->SetGenerateOverlapEvents(false);
+	EquippedItemMeshComponent->SetHiddenInGame(true);
 }
 
 UAbilitySystemComponent* AAMBCharacter::GetAbilitySystemComponent() const
@@ -34,6 +44,12 @@ void AAMBCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	InitializeAbilityActorInfo();
+
+	if (InventoryComponent)
+	{
+		InventoryComponent->OnInventorySlotSelected.AddDynamic(this, &AAMBCharacter::HandleInventorySlotSelected);
+		UpdateEquippedItemMesh(InventoryComponent->GetSelectedItem());
+	}
 
 	if (DefaultCombatStyle)
 	{
@@ -58,7 +74,6 @@ void AAMBCharacter::BeginPlay()
 void AAMBCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 // Called to bind functionality to input
@@ -68,9 +83,12 @@ void AAMBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		EnhancedInputComponent->BindAction(ComboAttackAction, ETriggerEvent::Started, this, &AAMBCharacter::ComboAttackPressed);
-		EnhancedInputComponent->BindAction(ChargedAttackAction, ETriggerEvent::Started, this, &AAMBCharacter::ChargedAttackPressed);
-		EnhancedInputComponent->BindAction(ChargedAttackAction, ETriggerEvent::Completed, this, &AAMBCharacter::ChargedAttackReleased);
+		EnhancedInputComponent->BindAction(ComboAttackAction, ETriggerEvent::Started, this,
+		                                   &AAMBCharacter::ComboAttackPressed);
+		EnhancedInputComponent->BindAction(ChargedAttackAction, ETriggerEvent::Started, this,
+		                                   &AAMBCharacter::ChargedAttackPressed);
+		EnhancedInputComponent->BindAction(ChargedAttackAction, ETriggerEvent::Completed, this,
+		                                   &AAMBCharacter::ChargedAttackReleased);
 	}
 }
 
@@ -132,6 +150,32 @@ void AAMBCharacter::GrantCombatStyleAbilities(const UAMBCombatStyleData* CombatS
 	}
 }
 
+USceneComponent* AAMBCharacter::GetEquippedItemAttachComponent() const
+{
+	TArray<UChildActorComponent*> ChildActorComponents;
+	GetComponents(ChildActorComponents);
+
+	for (UChildActorComponent* ChildActorComponent : ChildActorComponents)
+	{
+		if (!IsValid(ChildActorComponent) || ChildActorComponent->GetName() != TEXT("VisualOverride"))
+		{
+			continue;
+		}
+
+		if (AActor* ChildActor = ChildActorComponent->GetChildActor())
+		{
+			if (UMeshComponent* MeshComponent = ChildActor->FindComponentByClass<UMeshComponent>())
+			{
+				return MeshComponent;
+			}
+		}
+
+		break;
+	}
+
+	return GetMesh();
+}
+
 void AAMBCharacter::UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag)
 {
 	if (!AbilitySystemComponent)
@@ -157,28 +201,34 @@ bool AAMBCharacter::TryActivateCombatAbilityByInputTag(const FGameplayTag& Input
 {
 	if (!AbilitySystemComponent)
 	{
-		UE_LOG(LogMudAndBlood, Warning, TEXT("%s failed to activate combat input %s: AbilitySystemComponent is missing."),
-			*GetNameSafe(this),
-			*InputTag.ToString());
+		UE_LOG(LogMudAndBlood, Warning,
+		       TEXT("%s failed to activate combat input %s: AbilitySystemComponent is missing."),
+		       *GetNameSafe(this),
+		       *InputTag.ToString());
 		return false;
 	}
 
 	if (!AbilitySystemComponent->HasAbilityWithInputTag(InputTag))
 	{
-		UE_LOG(LogMudAndBlood, Warning, TEXT("%s failed to activate combat input %s: no granted ability matches this input tag. CurrentStyle=%s"),
-			*GetNameSafe(this),
-			*InputTag.ToString(),
-			*CurrentCombatStyleTag.ToString());
+		UE_LOG(LogMudAndBlood, Warning,
+		       TEXT("%s failed to activate combat input %s: no granted ability matches this input tag. CurrentStyle=%s"
+		       ),
+		       *GetNameSafe(this),
+		       *InputTag.ToString(),
+		       *CurrentCombatStyleTag.ToString());
 		return false;
 	}
 
 	const bool bActivated = AbilitySystemComponent->TryActivateAbilitiesByInputTag(InputTag);
 	if (!bActivated)
 	{
-		UE_LOG(LogMudAndBlood, Warning, TEXT("%s failed to activate combat input %s: matching ability exists but activation was rejected. CurrentStyle=%s"),
-			*GetNameSafe(this),
-			*InputTag.ToString(),
-			*CurrentCombatStyleTag.ToString());
+		UE_LOG(LogMudAndBlood, Warning,
+		       TEXT(
+			       "%s failed to activate combat input %s: matching ability exists but activation was rejected. CurrentStyle=%s"
+		       ),
+		       *GetNameSafe(this),
+		       *InputTag.ToString(),
+		       *CurrentCombatStyleTag.ToString());
 	}
 
 	return bActivated;
@@ -244,7 +294,8 @@ void AAMBCharacter::DoComboAttackStart()
 
 void AAMBCharacter::DoComboAttackEnd()
 {
-	UE_LOG(LogMudAndBlood, Verbose, TEXT("%s received DoComboAttackEnd, but combo end is not routed directly outside GAS."), *GetNameSafe(this));
+	UE_LOG(LogMudAndBlood, Verbose,
+	       TEXT("%s received DoComboAttackEnd, but combo end is not routed directly outside GAS."), *GetNameSafe(this));
 }
 
 void AAMBCharacter::DoChargedAttackStart()
@@ -278,9 +329,9 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 	GrantCombatStyleAbilities(CurrentCombatStyle);
 
 	UE_LOG(LogMudAndBlood, Log, TEXT("%s switched combat style to %s (Tag=%s)."),
-		*GetNameSafe(this),
-		*GetNameSafe(CurrentCombatStyle),
-		*CurrentCombatStyleTag.ToString());
+	       *GetNameSafe(this),
+	       *GetNameSafe(CurrentCombatStyle),
+	       *CurrentCombatStyleTag.ToString());
 
 	OnCombatStyleChanged.Broadcast(CurrentCombatSlotIndex, CurrentCombatStyleType, CurrentCombatStyle);
 }
@@ -305,17 +356,55 @@ void AAMBCharacter::SetDefaultCombatStyle(UAMBCombatStyleData* NewDefaultCombatS
 	}
 }
 
+void AAMBCharacter::UpdateEquippedItemMesh(UAMBItemData* ItemData)
+{
+	if (!EquippedItemMeshComponent)
+	{
+		return;
+	}
+
+	UStaticMesh* EquippedMesh = ItemData ? ItemData->EquippedMesh.Get() : nullptr;
+	if (!EquippedMesh)
+	{
+		EquippedItemMeshComponent->SetStaticMesh(nullptr);
+		EquippedItemMeshComponent->SetHiddenInGame(true);
+		return;
+	}
+
+	USceneComponent* AttachComponent = GetEquippedItemAttachComponent();
+	if (!AttachComponent)
+	{
+		EquippedItemMeshComponent->SetStaticMesh(nullptr);
+		EquippedItemMeshComponent->SetHiddenInGame(true);
+		return;
+	}
+
+	EquippedItemMeshComponent->SetStaticMesh(EquippedMesh);
+	EquippedItemMeshComponent->AttachToComponent(
+		AttachComponent,
+		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+		ItemData->EquippedMeshSocketName
+	);
+	EquippedItemMeshComponent->SetRelativeLocation(ItemData->EquippedMeshRelativeLocation);
+	EquippedItemMeshComponent->SetRelativeRotation(ItemData->EquippedMeshRelativeRotation);
+	EquippedItemMeshComponent->SetRelativeScale3D(ItemData->EquippedMeshRelativeScale);
+	EquippedItemMeshComponent->SetHiddenInGame(false);
+}
+
 void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
 {
 	UAMBCombatStyleData* CombatStyle = GetConfiguredCombatStyle(CombatStyleType);
 	if (!CombatStyle)
 	{
 		static const UEnum* CombatStyleEnum = StaticEnum<EAMBCombatStyleType>();
-		const FString CombatStyleName = CombatStyleEnum ? CombatStyleEnum->GetNameStringByValue(static_cast<int64>(CombatStyleType)) : TEXT("Unknown");
+		const FString CombatStyleName = CombatStyleEnum
+			                                ? CombatStyleEnum->GetNameStringByValue(static_cast<int64>(CombatStyleType))
+			                                : TEXT("Unknown");
 
-		UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot equip combat style %s: no style asset is assigned on the character."),
-			*GetNameSafe(this),
-			*CombatStyleName);
+		UE_LOG(LogMudAndBlood, Warning,
+		       TEXT("%s cannot equip combat style %s: no style asset is assigned on the character."),
+		       *GetNameSafe(this),
+		       *CombatStyleName);
 		return;
 	}
 
@@ -332,20 +421,27 @@ void AAMBCharacter::EquipCombatSlot(int32 SlotIndex)
 	UAMBCombatStyleData* CombatStyle = GetConfiguredCombatSlotStyle(SlotIndex);
 	if (!CombatStyle)
 	{
-		UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot equip combat slot %d: no UAMBCombatStyleData is assigned to that slot."),
-			*GetNameSafe(this),
-			SlotIndex);
+		UE_LOG(LogMudAndBlood, Warning,
+		       TEXT("%s cannot equip combat slot %d: no UAMBCombatStyleData is assigned to that slot."),
+		       *GetNameSafe(this),
+		       SlotIndex);
 		return;
 	}
 
 	CurrentCombatSlotIndex = SlotIndex;
 
 	UE_LOG(LogMudAndBlood, Log, TEXT("%s selected combat slot %d -> %s."),
-		*GetNameSafe(this),
-		SlotIndex,
-		*GetNameSafe(CombatStyle));
+	       *GetNameSafe(this),
+	       SlotIndex,
+	       *GetNameSafe(CombatStyle));
 
 	SetDefaultCombatStyle(CombatStyle, SlotIndex);
+}
+
+void AAMBCharacter::HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* ItemData)
+{
+	static_cast<void>(SlotIndex);
+	UpdateEquippedItemMesh(ItemData);
 }
 
 void AAMBCharacter::DoAttackTrace(FName DamageSourceBone)

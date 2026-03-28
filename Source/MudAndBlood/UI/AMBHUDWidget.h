@@ -78,6 +78,9 @@ private:
 	void HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType,
 	                              UAMBCombatStyleData* CombatStyleData);
 
+	UFUNCTION()
+	void HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* ItemData);
+
 	void BindToCharacter();
 	void UnbindFromCharacter();
 

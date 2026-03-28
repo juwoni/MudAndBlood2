@@ -5,6 +5,8 @@
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "AMBItemData.generated.h"
 
+class UStaticMesh;
+
 UCLASS(BlueprintType)
 class MUDANDBLOOD_API UAMBItemData : public UPrimaryDataAsset
 {
@@ -13,6 +15,21 @@ class MUDANDBLOOD_API UAMBItemData : public UPrimaryDataAsset
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item")
 	FText ItemName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Equip")
+	TObjectPtr<UStaticMesh> EquippedMesh = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Equip")
+	FName EquippedMeshSocketName = TEXT("hand_rSocket");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Equip")
+	FVector EquippedMeshRelativeLocation = FVector::ZeroVector;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Equip")
+	FRotator EquippedMeshRelativeRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Equip")
+	FVector EquippedMeshRelativeScale = FVector(1.f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Combat")
 	TObjectPtr<UAMBCombatStyleData> CombatStyleData = nullptr;

@@ -201,6 +201,12 @@ void UAMBHUDWidget::HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleTyp
 	BP_OnCombatStyleChanged(SlotIndex, CombatStyleType, CombatStyleData);
 }
 
+void UAMBHUDWidget::HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* ItemData)
+{
+	static_cast<void>(ItemData);
+	SelectedItemBoxIndex = SlotIndex;
+}
+
 void UAMBHUDWidget::BindToCharacter()
 {
 	UnbindFromCharacter();
@@ -216,7 +222,9 @@ void UAMBHUDWidget::BindToCharacter()
 	if (UAMBInventoryComponent* InventoryComponent = CachedCharacter->GetInventoryComponent())
 	{
 		InventoryComponent->OnInventoryChanged.AddDynamic(this, &UAMBHUDWidget::UpdateBoxes);
+		InventoryComponent->OnInventorySlotSelected.AddDynamic(this, &UAMBHUDWidget::HandleInventorySlotSelected);
 		UpdateBoxes();
+		SelectedItemBoxIndex = InventoryComponent->GetSelectedSlotIndex();
 	}
 }
 
@@ -230,6 +238,7 @@ void UAMBHUDWidget::UnbindFromCharacter()
 	if (UAMBInventoryComponent* InventoryComponent = CachedCharacter->GetInventoryComponent())
 	{
 		InventoryComponent->OnInventoryChanged.RemoveDynamic(this, &UAMBHUDWidget::UpdateBoxes);
+		InventoryComponent->OnInventorySlotSelected.RemoveDynamic(this, &UAMBHUDWidget::HandleInventorySlotSelected);
 	}
 
 	CachedCharacter->OnCombatStyleChanged.RemoveDynamic(this, &UAMBHUDWidget::HandleCombatStyleChanged);
