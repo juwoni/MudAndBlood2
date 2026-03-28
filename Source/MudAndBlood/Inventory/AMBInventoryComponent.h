@@ -47,6 +47,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	void AddItem(UAMBItemData* NewItem);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Inventory", meta=(ClampMin=1))
 	int32 DefaultSlotCount = 8;
