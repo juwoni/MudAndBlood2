@@ -20,25 +20,37 @@ void UAMBInventoryComponent::BeginPlay()
 
 void UAMBInventoryComponent::AddItem(UAMBItemData* NewItem)
 {
-	InventoryItems.Add(NewItem);
-	
-	// SetItemBoxName
+	if (!NewItem)
+	{
+		return;
+	}
+
+	const int32 EmptySlotIndex = InventoryItems.IndexOfByPredicate([](const TObjectPtr<UAMBItemData>& Item)
+	{
+		return Item == nullptr;
+	});
+
+	if (EmptySlotIndex != INDEX_NONE)
+	{
+		SetItemInSlot(EmptySlotIndex, NewItem);
+		return;
+	}
+
+	const int32 NewSlotIndex = InventoryItems.Add(NewItem);
+	OnInventorySlotChanged.Broadcast(NewSlotIndex, NewItem);
+	OnInventoryChanged.Broadcast();
 }
 
 
 void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 {
-	// if (NewSlotCount <= 0)
-	// {
-	// 	return;
-	// }
-	//
-	// InventoryItems.SetNum(NewSlotCount);
-	//
-	// if (!IsValidInventorySlot(SelectedSlotIndex))
-	// {
-	// 	SelectedSlotIndex = INDEX_NONE;
-	// }
+	static_cast<void>(NewSlotCount);
+	InventoryItems.Init(nullptr, DefaultSlotCount);
+
+	if (!IsValidInventorySlot(SelectedSlotIndex))
+	{
+		SelectedSlotIndex = INDEX_NONE;
+	}
 
 	UAMBItemData* Item1 = LoadObject<UAMBItemData>(
 		nullptr,
@@ -50,13 +62,19 @@ void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 		TEXT("/Game/MudAndBlood/DA_Item_Unarmed.DA_Item_Unarmed")
 	);
 
-	if (Item1 && Item2)
+	if (Item2)
 	{
-		AddItem(Item2);
-		AddItem(Item1);
+		InventoryItems[0] = Item2;
+		OnInventorySlotChanged.Broadcast(0, Item2);
 	}
-	
-	
+
+	if (Item1)
+	{
+		InventoryItems[1] = Item1;
+		OnInventorySlotChanged.Broadcast(1, Item1);
+	}
+
+	OnInventoryChanged.Broadcast();
 }
 
 bool UAMBInventoryComponent::SetItemInSlot(int32 SlotIndex, UAMBItemData* ItemData)
@@ -68,6 +86,7 @@ bool UAMBInventoryComponent::SetItemInSlot(int32 SlotIndex, UAMBItemData* ItemDa
 
 	InventoryItems[SlotIndex] = ItemData;
 	OnInventorySlotChanged.Broadcast(SlotIndex, ItemData);
+	OnInventoryChanged.Broadcast();
 
 	if (SelectedSlotIndex == SlotIndex)
 	{

@@ -8,14 +8,19 @@
 #include "MudAndBlood.h"
 #include "UAMBItemBox.h"
 #include "Components/HorizontalBox.h"
+#include "Components/Widget.h"
 
 void UAMBHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	BindToCharacter();
-	RefreshCombatStyle();
-	
+	ItemBoxArray.Reset();
+
+	if (!ItemBoxList)
+	{
+		return;
+	}
+
 	for (int32 i = 0; i < ItemBoxList->GetChildrenCount(); i++)
 	{
 		UWidget* Child = ItemBoxList->GetChildAt(i);
@@ -33,7 +38,7 @@ void UAMBHUDWidget::NativeConstruct()
 
 		// UMyItemEntry* Entry = CreateWidget<UHorizontalBox>(GetWorld(), EntryClass);
 		// ItemBoxList->AddChildToHorizontalBox(Entry);
-		
+
 		ItemBoxArray.Add(Entry);
 
 		FString Name = Entry->GetName();
@@ -45,6 +50,9 @@ void UAMBHUDWidget::NativeConstruct()
 			FString::Printf(TEXT("Hello World %s"), *Name)
 		);
 	}
+
+	BindToCharacter();
+	RefreshCombatStyle();
 }
 
 void UAMBHUDWidget::NativeDestruct()
@@ -56,7 +64,21 @@ void UAMBHUDWidget::NativeDestruct()
 
 void UAMBHUDWidget::UpdateBoxes()
 {
-	
+	UAMBInventoryComponent* InventoryComponent = GetInventoryComponent();
+
+	auto ItemBoxSize = ItemBoxArray.Num();
+
+	for (int32 BoxIndex = 0; BoxIndex < ItemBoxSize; ++BoxIndex)
+	{
+		UItemBoxWidget* ItemBox = ItemBoxArray[BoxIndex];
+		if (!ItemBox)
+		{
+			continue;
+		}
+
+		UAMBItemData* ItemData = InventoryComponent ? InventoryComponent->GetItemInSlot(BoxIndex) : nullptr;
+		ItemBox->SetItemData(ItemData);
+	}
 }
 
 void UAMBHUDWidget::EquipCombatSlot(int32 SlotIndex)
@@ -190,6 +212,12 @@ void UAMBHUDWidget::BindToCharacter()
 	}
 
 	CachedCharacter->OnCombatStyleChanged.AddDynamic(this, &UAMBHUDWidget::HandleCombatStyleChanged);
+
+	if (UAMBInventoryComponent* InventoryComponent = CachedCharacter->GetInventoryComponent())
+	{
+		InventoryComponent->OnInventoryChanged.AddDynamic(this, &UAMBHUDWidget::UpdateBoxes);
+		UpdateBoxes();
+	}
 }
 
 void UAMBHUDWidget::UnbindFromCharacter()
@@ -197,6 +225,11 @@ void UAMBHUDWidget::UnbindFromCharacter()
 	if (!CachedCharacter)
 	{
 		return;
+	}
+
+	if (UAMBInventoryComponent* InventoryComponent = CachedCharacter->GetInventoryComponent())
+	{
+		InventoryComponent->OnInventoryChanged.RemoveDynamic(this, &UAMBHUDWidget::UpdateBoxes);
 	}
 
 	CachedCharacter->OnCombatStyleChanged.RemoveDynamic(this, &UAMBHUDWidget::HandleCombatStyleChanged);

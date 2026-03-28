@@ -6,6 +6,8 @@
 #include "Blueprint/UserWidget.h"
 #include "UAMBItemBox.generated.h"
 
+class UHorizontalBox;
+class UAMBItemData;
 class UTextBlock;
 /**
  * 
@@ -20,4 +22,10 @@ class MUDANDBLOOD_API UItemBoxWidget : public UUserWidget
 public:
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget), Category="HUD|Inventory")
 	TObjectPtr<UTextBlock> ItemNameText;
+	
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget), Category="HUD|Inventory")
+	TObjectPtr<UHorizontalBox> ItemContainer;
+
+	UFUNCTION(BlueprintCallable, Category="HUD|Inventory")
+	void SetItemData(UAMBItemData* ItemData);
 };

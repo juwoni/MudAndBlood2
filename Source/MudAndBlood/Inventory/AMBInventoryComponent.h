@@ -7,6 +7,7 @@
 class AAMBCharacter;
 class UAMBItemData;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FAMBInventorySlotChangedSignature, int32, SlotIndex, UAMBItemData*, ItemData);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FAMBInventorySlotSelectedSignature, int32, SlotIndex, UAMBItemData*, ItemData);
 
@@ -17,6 +18,9 @@ class MUDANDBLOOD_API UAMBInventoryComponent : public UActorComponent
 
 public:
 	UAMBInventoryComponent();
+
+	UPROPERTY(BlueprintAssignable, Category="Inventory")
+	FOnInventoryChanged OnInventoryChanged;
 
 	UPROPERTY(BlueprintAssignable, Category="Inventory")
 	FAMBInventorySlotChangedSignature OnInventorySlotChanged;
@@ -50,7 +54,7 @@ protected:
 	void AddItem(UAMBItemData* NewItem);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Inventory", meta=(ClampMin=1))
-	int32 DefaultSlotCount = 8;
+	int32 DefaultSlotCount = 6;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
 	TArray<TObjectPtr<UAMBItemData>> InventoryItems;
