@@ -4,7 +4,10 @@
 #include "GameFramework/PlayerController.h"
 #include "Inventory/AMBInventoryComponent.h"
 #include "Inventory/AMBItemData.h"
+
 #include "MudAndBlood.h"
+#include "UAMBItemBox.h"
+#include "Components/HorizontalBox.h"
 
 void UAMBHUDWidget::NativeConstruct()
 {
@@ -12,6 +15,36 @@ void UAMBHUDWidget::NativeConstruct()
 
 	BindToCharacter();
 	RefreshCombatStyle();
+	
+	for (int32 i = 0; i < ItemBoxList->GetChildrenCount(); i++)
+	{
+		UWidget* Child = ItemBoxList->GetChildAt(i);
+
+		if (!IsValid(Child))
+		{
+			continue;
+		}
+
+		UItemBoxWidget* Entry = Cast<UItemBoxWidget>(Child);
+		if (!Entry)
+		{
+			continue;
+		}
+
+		// UMyItemEntry* Entry = CreateWidget<UHorizontalBox>(GetWorld(), EntryClass);
+		// ItemBoxList->AddChildToHorizontalBox(Entry);
+		
+		ItemBoxArray.Add(Entry);
+
+		FString Name = Entry->GetName();
+
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			2.0f,
+			FColor::Yellow,
+			FString::Printf(TEXT("Hello World %s"), *Name)
+		);
+	}
 }
 
 void UAMBHUDWidget::NativeDestruct()
@@ -19,6 +52,11 @@ void UAMBHUDWidget::NativeDestruct()
 	UnbindFromCharacter();
 
 	Super::NativeDestruct();
+}
+
+void UAMBHUDWidget::UpdateBoxes()
+{
+	
 }
 
 void UAMBHUDWidget::EquipCombatSlot(int32 SlotIndex)
@@ -30,15 +68,16 @@ void UAMBHUDWidget::EquipCombatSlot(int32 SlotIndex)
 	}
 
 	UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot equip combat slot %d: owning AMBCharacter was not found."),
-		*GetNameSafe(this),
-		SlotIndex);
+	       *GetNameSafe(this),
+	       SlotIndex);
 }
 
 void UAMBHUDWidget::RefreshCombatStyle()
 {
 	if (AAMBCharacter* Character = GetAMBCharacter())
 	{
-		BP_OnCombatStyleChanged(Character->GetCurrentCombatSlotIndex(), Character->GetCurrentCombatStyleType(), Character->GetCurrentCombatStyle());
+		BP_OnCombatStyleChanged(Character->GetCurrentCombatSlotIndex(), Character->GetCurrentCombatStyleType(),
+		                        Character->GetCurrentCombatStyle());
 	}
 }
 
@@ -50,9 +89,10 @@ void UAMBHUDWidget::SelectInventorySlot(int32 SlotIndex)
 		return;
 	}
 
-	UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot select inventory slot %d: owning inventory component was not found."),
-		*GetNameSafe(this),
-		SlotIndex);
+	UE_LOG(LogMudAndBlood, Warning,
+	       TEXT("%s cannot select inventory slot %d: owning inventory component was not found."),
+	       *GetNameSafe(this),
+	       SlotIndex);
 }
 
 void UAMBHUDWidget::SetInventorySlotItem(int32 SlotIndex, UAMBItemData* ItemData)
@@ -64,8 +104,8 @@ void UAMBHUDWidget::SetInventorySlotItem(int32 SlotIndex, UAMBItemData* ItemData
 	}
 
 	UE_LOG(LogMudAndBlood, Warning, TEXT("%s cannot set inventory slot %d: owning inventory component was not found."),
-		*GetNameSafe(this),
-		SlotIndex);
+	       *GetNameSafe(this),
+	       SlotIndex);
 }
 
 AAMBCharacter* UAMBHUDWidget::GetAMBCharacter() const
@@ -133,7 +173,8 @@ UAMBItemData* UAMBHUDWidget::GetInventorySlotItem(int32 SlotIndex) const
 	return nullptr;
 }
 
-void UAMBHUDWidget::HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType, UAMBCombatStyleData* CombatStyleData)
+void UAMBHUDWidget::HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType,
+                                             UAMBCombatStyleData* CombatStyleData)
 {
 	BP_OnCombatStyleChanged(SlotIndex, CombatStyleType, CombatStyleData);
 }

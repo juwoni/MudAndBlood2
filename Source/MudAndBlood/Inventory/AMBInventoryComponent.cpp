@@ -21,6 +21,8 @@ void UAMBInventoryComponent::BeginPlay()
 void UAMBInventoryComponent::AddItem(UAMBItemData* NewItem)
 {
 	InventoryItems.Add(NewItem);
+	
+	// SetItemBoxName
 }
 
 
@@ -53,6 +55,8 @@ void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 		AddItem(Item2);
 		AddItem(Item1);
 	}
+	
+	
 }
 
 bool UAMBInventoryComponent::SetItemInSlot(int32 SlotIndex, UAMBItemData* ItemData)

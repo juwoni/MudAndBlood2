@@ -5,10 +5,13 @@
 #include "AMBCharacter.h"
 #include "AMBHUDWidget.generated.h"
 
+class UHorizontalBox;
 class AAMBCharacter;
 class UAMBInventoryComponent;
 class UAMBCombatStyleData;
 class UAMBItemData;
+class UItemBoxWidget;
+// class UHorizontalBox;
 
 UCLASS(Abstract, Blueprintable)
 class MUDANDBLOOD_API UAMBHUDWidget : public UUserWidget
@@ -18,6 +21,15 @@ class MUDANDBLOOD_API UAMBHUDWidget : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget), Category="HUD|Inventory")
+	TObjectPtr<UHorizontalBox> ItemBoxList;
+
+	UPROPERTY(BlueprintReadWrite, Category="HUD|Inventory")
+	TArray<TObjectPtr<UItemBoxWidget>> ItemBoxArray;
+
+	UFUNCTION(BlueprintCallable, Category="HUD|Inventory")
+	void UpdateBoxes();
 
 	UFUNCTION(BlueprintCallable, Category="HUD|Combat")
 	void EquipCombatSlot(int32 SlotIndex);
@@ -49,13 +61,19 @@ public:
 	UFUNCTION(BlueprintPure, Category="HUD|Inventory")
 	UAMBItemData* GetInventorySlotItem(int32 SlotIndex) const;
 
+public:
+	// UFUNCTION(BlueprintImplementableEvent)
+	// void SetItemBoxName(const FString& NewItemBoxName, int32 NewItemBoxIndex);
+
 protected:
 	UFUNCTION(BlueprintImplementableEvent, Category="HUD|Combat")
-	void BP_OnCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType, UAMBCombatStyleData* CombatStyleData);
+	void BP_OnCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType,
+	                             UAMBCombatStyleData* CombatStyleData);
 
 private:
 	UFUNCTION()
-	void HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType, UAMBCombatStyleData* CombatStyleData);
+	void HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType,
+	                              UAMBCombatStyleData* CombatStyleData);
 
 	void BindToCharacter();
 	void UnbindFromCharacter();
