@@ -32,7 +32,7 @@ void UAMBInventoryComponent::AddItem(UAMBItemData* NewItem)
 
 	if (EmptySlotIndex != INDEX_NONE)
 	{
-		SetItemInSlot(EmptySlotIndex, NewItem);
+		AddItemToSlot(EmptySlotIndex, NewItem);
 		return;
 	}
 
@@ -64,20 +64,28 @@ void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 
 	if (Item2)
 	{
-		InventoryItems[0] = Item2;
-		OnInventorySlotChanged.Broadcast(0, Item2);
+		AddItemToSlot(0, Item2, false);
 	}
 
 	if (Item1)
 	{
-		InventoryItems[1] = Item1;
-		OnInventorySlotChanged.Broadcast(1, Item1);
+		AddItemToSlot(1, Item1, false);
+	}
+	
+	if (Item1)
+	{
+		AddItemToSlot(2, Item1, false);
 	}
 
 	OnInventoryChanged.Broadcast();
 }
 
 bool UAMBInventoryComponent::SetItemInSlot(int32 SlotIndex, UAMBItemData* ItemData)
+{
+	return AddItemToSlot(SlotIndex, ItemData);
+}
+
+bool UAMBInventoryComponent::AddItemToSlot(int32 SlotIndex, UAMBItemData* ItemData, bool bBroadcastInventoryChanged)
 {
 	if (!IsValidInventorySlot(SlotIndex))
 	{
@@ -86,7 +94,11 @@ bool UAMBInventoryComponent::SetItemInSlot(int32 SlotIndex, UAMBItemData* ItemDa
 
 	InventoryItems[SlotIndex] = ItemData;
 	OnInventorySlotChanged.Broadcast(SlotIndex, ItemData);
-	OnInventoryChanged.Broadcast();
+
+	if (bBroadcastInventoryChanged)
+	{
+		OnInventoryChanged.Broadcast();
+	}
 
 	if (SelectedSlotIndex == SlotIndex)
 	{

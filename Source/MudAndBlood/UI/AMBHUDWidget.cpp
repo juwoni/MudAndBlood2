@@ -206,7 +206,7 @@ void UAMBHUDWidget::BindToCharacter()
 	UnbindFromCharacter();
 
 	CachedCharacter = GetAMBCharacter();
-	if (!CachedCharacter)
+	if (!IsValid(CachedCharacter))
 	{
 		return;
 	}
@@ -222,7 +222,7 @@ void UAMBHUDWidget::BindToCharacter()
 
 void UAMBHUDWidget::UnbindFromCharacter()
 {
-	if (!CachedCharacter)
+	if (!IsValid(CachedCharacter))
 	{
 		return;
 	}
