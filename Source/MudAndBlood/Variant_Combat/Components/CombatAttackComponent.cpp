@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "CombatDamageable.h"
+#include "DrawDebugHelpers.h"
 
 UCombatAttackComponent::UCombatAttackComponent()
 {
@@ -184,7 +185,34 @@ void UCombatAttackComponent::NotifyEnemiesOfIncomingAttack()
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(CharacterOwner);
 
-	if (!World->SweepMultiByObjectType(OutHits, TraceStart, TraceEnd, FQuat::Identity, ObjectParams, CollisionShape, QueryParams))
+	const bool bHit = World->SweepMultiByObjectType(OutHits, TraceStart, TraceEnd, FQuat::Identity, ObjectParams, CollisionShape, QueryParams);
+
+	if (bDrawDangerTraceDebug)
+	{
+		const FVector TraceVector = TraceEnd - TraceStart;
+		const FVector TraceCenter = TraceStart + (TraceVector * 0.5f);
+		const float HalfHeight = (TraceVector.Size() * 0.5f) + DangerTraceRadius;
+		const FQuat TraceRotation = TraceVector.IsNearlyZero()
+			? FQuat::Identity
+			: FQuat::FindBetweenNormals(FVector::UpVector, TraceVector.GetSafeNormal());
+		const FColor TraceColor = bHit ? FColor::Orange : FColor::Green;
+
+		DrawDebugCapsule(World, TraceCenter, HalfHeight, DangerTraceRadius, TraceRotation, TraceColor, false, DangerTraceDebugDuration);
+		DrawDebugSphere(World, TraceStart, DangerTraceRadius, 16, TraceColor, false, DangerTraceDebugDuration);
+		DrawDebugSphere(World, TraceEnd, DangerTraceRadius, 16, TraceColor, false, DangerTraceDebugDuration);
+
+		for (const FHitResult& CurrentHit : OutHits)
+		{
+			if (!CurrentHit.GetActor())
+			{
+				continue;
+			}
+
+			DrawDebugPoint(World, CurrentHit.ImpactPoint, 16.0f, FColor::Red, false, DangerTraceDebugDuration);
+		}
+	}
+
+	if (!bHit)
 	{
 		return;
 	}

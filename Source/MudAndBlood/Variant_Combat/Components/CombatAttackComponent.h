@@ -86,6 +86,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 200, Units = "cm"))
 	float DangerTraceRadius = 100.0f;
 
+	/** If true, draw debug geometry whenever incoming attack danger is notified. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug")
+	bool bDrawDangerTraceDebug = false;
+
+	/** How long the danger trace debug geometry should remain visible. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug", meta = (ClampMin = 0, ClampMax = 10, Units = "s"))
+	float DangerTraceDebugDuration = 1.0f;
+
 	/** Amount of damage a melee attack will deal */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Damage", meta = (ClampMin = 0, ClampMax = 100))
 	float MeleeDamage = 1.0f;
