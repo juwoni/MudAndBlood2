@@ -240,9 +240,10 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 	if (bDrawWeaponDamageTraceDebug)
 	{
 		const FColor TraceColor = bHit ? FColor::Red : FColor::Cyan;
-		DrawDebugSphere(World, TraceStart, MeleeTraceRadius, 16, TraceColor, false, WeaponDamageTraceDebugDuration);
-		DrawDebugSphere(World, TraceEnd, MeleeTraceRadius, 16, TraceColor, false, WeaponDamageTraceDebugDuration);
-		DrawDebugLine(World, TraceStart, TraceEnd, TraceColor, false, WeaponDamageTraceDebugDuration, 0, 2.0f);
+		const float DebugLifetime = GetAttackTraceDebugLifetime(World);
+		DrawDebugSphere(World, TraceStart, MeleeTraceRadius, 16, TraceColor, false, DebugLifetime);
+		DrawDebugSphere(World, TraceEnd, MeleeTraceRadius, 16, TraceColor, false, DebugLifetime);
+		DrawDebugLine(World, TraceStart, TraceEnd, TraceColor, false, DebugLifetime, 0, 2.0f);
 
 		for (const FHitResult& CurrentHit : OutHits)
 		{
@@ -251,7 +252,7 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 				continue;
 			}
 
-			DrawDebugPoint(World, CurrentHit.ImpactPoint, 16.0f, FColor::Yellow, false, WeaponDamageTraceDebugDuration);
+			DrawDebugPoint(World, CurrentHit.ImpactPoint, 16.0f, FColor::Yellow, false, DebugLifetime);
 		}
 	}
 
@@ -282,6 +283,23 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 		Damageable->ApplyDamage(MeleeDamage, CharacterOwner, CurrentHit.ImpactPoint, Impulse);
 		OnDamageDealt.Broadcast(MeleeDamage, CurrentHit.ImpactPoint);
 	}
+}
+
+float UCombatAttackComponent::GetAttackTraceDebugLifetime(const UWorld* World) const
+{
+	if (!bIsAttackTraceWindowActive)
+	{
+		return WeaponDamageTraceDebugDuration;
+	}
+
+	if (!World)
+	{
+		return 0.0f;
+	}
+
+	// When the trace is driven by an AnimNotifyState, keep debug geometry alive for roughly one frame
+	// so it visually tracks the montage instead of lingering after the swing has ended.
+	return FMath::Max(World->GetDeltaSeconds(), KINDA_SMALL_NUMBER);
 }
 
 void UCombatAttackComponent::ResetAttackTraceWindowState()
@@ -435,7 +453,7 @@ void UCombatAttackComponent::ComboAttack()
 	bIsAttacking = true;
 	ComboCount = 0;
 
-	NotifyEnemiesOfIncomingAttack();
+	// NotifyEnemiesOfIncomingAttack();
 
 	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
 	{

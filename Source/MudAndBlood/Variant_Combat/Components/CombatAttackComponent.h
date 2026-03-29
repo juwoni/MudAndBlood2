@@ -154,6 +154,7 @@ protected:
 	bool TryResolveAttackTraceLocation(ACharacter* CharacterOwner, FName SocketName, FVector& OutLocation) const;
 	bool TryResolveAttackTracePoints(ACharacter* CharacterOwner, FName TraceStartBone, FName TraceEndBone, FVector& OutTraceStart, FVector& OutTraceEnd) const;
 	void PerformAttackTraceSweep(ACharacter* CharacterOwner, const FVector& TraceStart, const FVector& TraceEnd, TSet<TWeakObjectPtr<AActor>>& AlreadyHitActors);
+	float GetAttackTraceDebugLifetime(const UWorld* World) const;
 	void ResetAttackTraceWindowState();
 
 	static const FName DefaultWeaponAttackTraceStartSocketName;
