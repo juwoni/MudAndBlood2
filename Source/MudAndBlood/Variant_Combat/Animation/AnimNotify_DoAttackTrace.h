@@ -16,9 +16,13 @@ class UAnimNotify_DoAttackTrace : public UAnimNotify
 	
 protected:
 
-	/** Source bone for the attack trace */
+	/** Start socket or bone for the attack trace. Usually weapon base/guard or hand socket. */
 	UPROPERTY(EditAnywhere, Category="Attack")
 	FName AttackBoneName;
+
+	/** End socket or bone for the attack trace. Usually weapon tip. If unset, the trace falls back to forward sweep. */
+	UPROPERTY(EditAnywhere, Category="Attack")
+	FName AttackEndBoneName;
 
 public:
 

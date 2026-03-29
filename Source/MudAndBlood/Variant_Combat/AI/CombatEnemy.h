@@ -175,7 +175,7 @@ public:
 	// ~begin ICombatAttacker interface
 
 	/** Performs an attack's collision check */
-	virtual void DoAttackTrace(FName DamageSourceBone) override;
+	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 
 	/** Performs a combo attack's check to continue the string */
 	UFUNCTION(BlueprintCallable, Category="Attacker")

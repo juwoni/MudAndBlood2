@@ -43,7 +43,19 @@ public:
 
 	/** Performs the collision check for an attack */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual void DoAttackTrace(FName DamageSourceBone);
+	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone);
+
+	/** Starts a continuous attack trace window. */
+	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
+	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone);
+
+	/** Updates a continuous attack trace window. */
+	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
+	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone);
+
+	/** Ends a continuous attack trace window. */
+	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
+	virtual void EndAttackTraceWindow();
 
 	/** Performs the combo string check */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
@@ -94,6 +106,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug", meta = (ClampMin = 0, ClampMax = 10, Units = "s"))
 	float DangerTraceDebugDuration = 1.0f;
 
+	/** If true, draw debug geometry for the actual attack sweep used to deal damage. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug")
+	bool bDrawWeaponDamageTraceDebug = false;
+
+	/** How long the weapon damage trace debug geometry should remain visible. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug", meta = (ClampMin = 0, ClampMax = 10, Units = "s"))
+	float WeaponDamageTraceDebugDuration = 1.0f;
+
 	/** Amount of damage a melee attack will deal */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Damage", meta = (ClampMin = 0, ClampMax = 100))
 	float MeleeDamage = 1.0f;
@@ -131,6 +151,14 @@ protected:
 	FName ChargeAttackSection;
 
 protected:
+	bool TryResolveAttackTraceLocation(ACharacter* CharacterOwner, FName SocketName, FVector& OutLocation) const;
+	bool TryResolveAttackTracePoints(ACharacter* CharacterOwner, FName TraceStartBone, FName TraceEndBone, FVector& OutTraceStart, FVector& OutTraceEnd) const;
+	void PerformAttackTraceSweep(ACharacter* CharacterOwner, const FVector& TraceStart, const FVector& TraceEnd, TSet<TWeakObjectPtr<AActor>>& AlreadyHitActors);
+	void ResetAttackTraceWindowState();
+
+	static const FName DefaultWeaponAttackTraceStartSocketName;
+	static const FName DefaultWeaponAttackTraceEndSocketName;
+
 	/** Performs a combo attack */
 	void ComboAttack();
 
@@ -161,6 +189,21 @@ private:
 
 	/** If true, the charged attack hold check has been tested at least once */
 	bool bHasLoopedChargedAttack = false;
+
+	/** If true, an AnimNotifyState currently owns the melee trace window. */
+	bool bIsAttackTraceWindowActive = false;
+
+	/** If true, previous frame trace points have been cached for the active attack window. */
+	bool bHasPreviousAttackTracePoints = false;
+
+	/** Previous frame start point used for continuous attack sweeps. */
+	FVector PreviousAttackTraceStart = FVector::ZeroVector;
+
+	/** Previous frame end point used for continuous attack sweeps. */
+	FVector PreviousAttackTraceEnd = FVector::ZeroVector;
+
+	/** Actors already damaged during the current continuous attack window. */
+	TSet<TWeakObjectPtr<AActor>> DamagedActorsInTraceWindow;
 
 	/** Attack montage ended delegate */
 	FOnMontageEnded OnAttackMontageEnded;

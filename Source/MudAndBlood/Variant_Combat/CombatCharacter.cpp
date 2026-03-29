@@ -254,14 +254,16 @@ void ACombatCharacter::AttackMontageEnded(UAnimMontage* Montage, bool bInterrupt
 	}
 }
 
-void ACombatCharacter::DoAttackTrace(FName DamageSourceBone)
+void ACombatCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
 	// sweep for objects in front of the character to be hit by the attack
 	TArray<FHitResult> OutHits;
 
-	// start at the provided socket location, sweep forward
-	const FVector TraceStart = GetMesh()->GetSocketLocation(DamageSourceBone);
-	const FVector TraceEnd = TraceStart + (GetActorForwardVector() * MeleeTraceDistance);
+	// start at the provided socket location and sweep toward the end socket if one is provided
+	const FVector TraceStart = GetMesh()->GetSocketLocation(TraceStartBone);
+	const FVector TraceEnd = TraceEndBone.IsNone()
+		? TraceStart + (GetActorForwardVector() * MeleeTraceDistance)
+		: GetMesh()->GetSocketLocation(TraceEndBone);
 
 	// check for pawn and world dynamic collision object types
 	FCollisionObjectQueryParams ObjectParams;

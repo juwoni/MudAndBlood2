@@ -2,11 +2,16 @@
 
 #include "Variant_Combat/Components/CombatAttackComponent.h"
 
+#include "AMBCharacter.h"
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "CombatDamageable.h"
 #include "DrawDebugHelpers.h"
+
+const FName UCombatAttackComponent::DefaultWeaponAttackTraceStartSocketName(TEXT("AttackStart"));
+const FName UCombatAttackComponent::DefaultWeaponAttackTraceEndSocketName(TEXT("AttackEnd"));
 
 UCombatAttackComponent::UCombatAttackComponent()
 {
@@ -67,20 +72,158 @@ void UCombatAttackComponent::DoChargedAttackEnd()
 	}
 }
 
-void UCombatAttackComponent::DoAttackTrace(FName DamageSourceBone)
+void UCombatAttackComponent::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
 	ACharacter* CharacterOwner = GetCharacterOwner();
-	UWorld* World = GetWorld();
+	if (!CharacterOwner)
+	{
+		return;
+	}
 
-	if (!CharacterOwner || !World || !CharacterOwner->GetMesh())
+	FVector TraceStart = FVector::ZeroVector;
+	FVector TraceEnd = FVector::ZeroVector;
+	if (!TryResolveAttackTracePoints(CharacterOwner, TraceStartBone, TraceEndBone, TraceStart, TraceEnd))
+	{
+		return;
+	}
+
+	TSet<TWeakObjectPtr<AActor>> DamagedActors;
+	PerformAttackTraceSweep(CharacterOwner, TraceStart, TraceEnd, DamagedActors);
+}
+
+void UCombatAttackComponent::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
+{
+	ACharacter* CharacterOwner = GetCharacterOwner();
+	if (!CharacterOwner)
+	{
+		return;
+	}
+
+	ResetAttackTraceWindowState();
+	bIsAttackTraceWindowActive = true;
+
+	FVector TraceStart = FVector::ZeroVector;
+	FVector TraceEnd = FVector::ZeroVector;
+	if (!TryResolveAttackTracePoints(CharacterOwner, TraceStartBone, TraceEndBone, TraceStart, TraceEnd))
+	{
+		ResetAttackTraceWindowState();
+		return;
+	}
+
+	PreviousAttackTraceStart = TraceStart;
+	PreviousAttackTraceEnd = TraceEnd;
+	bHasPreviousAttackTracePoints = true;
+
+	PerformAttackTraceSweep(CharacterOwner, TraceStart, TraceEnd, DamagedActorsInTraceWindow);
+}
+
+void UCombatAttackComponent::TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
+{
+	if (!bIsAttackTraceWindowActive)
+	{
+		return;
+	}
+
+	ACharacter* CharacterOwner = GetCharacterOwner();
+	if (!CharacterOwner)
+	{
+		ResetAttackTraceWindowState();
+		return;
+	}
+
+	FVector CurrentTraceStart = FVector::ZeroVector;
+	FVector CurrentTraceEnd = FVector::ZeroVector;
+	if (!TryResolveAttackTracePoints(CharacterOwner, TraceStartBone, TraceEndBone, CurrentTraceStart, CurrentTraceEnd))
+	{
+		return;
+	}
+
+	if (!bHasPreviousAttackTracePoints)
+	{
+		PreviousAttackTraceStart = CurrentTraceStart;
+		PreviousAttackTraceEnd = CurrentTraceEnd;
+		bHasPreviousAttackTracePoints = true;
+	}
+
+	PerformAttackTraceSweep(CharacterOwner, CurrentTraceStart, CurrentTraceEnd, DamagedActorsInTraceWindow);
+
+	if (!PreviousAttackTraceStart.Equals(CurrentTraceStart))
+	{
+		PerformAttackTraceSweep(CharacterOwner, PreviousAttackTraceStart, CurrentTraceStart, DamagedActorsInTraceWindow);
+	}
+
+	if (!PreviousAttackTraceEnd.Equals(CurrentTraceEnd))
+	{
+		PerformAttackTraceSweep(CharacterOwner, PreviousAttackTraceEnd, CurrentTraceEnd, DamagedActorsInTraceWindow);
+	}
+
+	PreviousAttackTraceStart = CurrentTraceStart;
+	PreviousAttackTraceEnd = CurrentTraceEnd;
+}
+
+void UCombatAttackComponent::EndAttackTraceWindow()
+{
+	ResetAttackTraceWindowState();
+}
+
+bool UCombatAttackComponent::TryResolveAttackTraceLocation(ACharacter* CharacterOwner, FName SocketName, FVector& OutLocation) const
+{
+	if (!CharacterOwner || SocketName.IsNone())
+	{
+		return false;
+	}
+
+	if (const AAMBCharacter* CombatCharacterOwner = Cast<AAMBCharacter>(CharacterOwner))
+	{
+		if (UStaticMeshComponent* EquippedWeaponMesh = CombatCharacterOwner->GetEquippedItemMeshComponent())
+		{
+			if (EquippedWeaponMesh->IsRegistered() && EquippedWeaponMesh->DoesSocketExist(SocketName))
+			{
+				OutLocation = EquippedWeaponMesh->GetSocketLocation(SocketName);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool UCombatAttackComponent::TryResolveAttackTracePoints(
+	ACharacter* CharacterOwner,
+	FName TraceStartBone,
+	FName TraceEndBone,
+	FVector& OutTraceStart,
+	FVector& OutTraceEnd) const
+{
+	static_cast<void>(TraceStartBone);
+	static_cast<void>(TraceEndBone);
+
+	if (!TryResolveAttackTraceLocation(CharacterOwner, DefaultWeaponAttackTraceStartSocketName, OutTraceStart))
+	{
+		return false;
+	}
+
+	if (!TryResolveAttackTraceLocation(CharacterOwner, DefaultWeaponAttackTraceEndSocketName, OutTraceEnd))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void UCombatAttackComponent::PerformAttackTraceSweep(
+	ACharacter* CharacterOwner,
+	const FVector& TraceStart,
+	const FVector& TraceEnd,
+	TSet<TWeakObjectPtr<AActor>>& AlreadyHitActors)
+{
+	UWorld* World = CharacterOwner ? CharacterOwner->GetWorld() : nullptr;
+	if (!CharacterOwner || !World)
 	{
 		return;
 	}
 
 	TArray<FHitResult> OutHits;
-
-	const FVector TraceStart = CharacterOwner->GetMesh()->GetSocketLocation(DamageSourceBone);
-	const FVector TraceEnd = TraceStart + (CharacterOwner->GetActorForwardVector() * MeleeTraceDistance);
 
 	FCollisionObjectQueryParams ObjectParams;
 	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
@@ -92,17 +235,36 @@ void UCombatAttackComponent::DoAttackTrace(FName DamageSourceBone)
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(CharacterOwner);
 
-	if (!World->SweepMultiByObjectType(OutHits, TraceStart, TraceEnd, FQuat::Identity, ObjectParams, CollisionShape, QueryParams))
+	const bool bHit = World->SweepMultiByObjectType(OutHits, TraceStart, TraceEnd, FQuat::Identity, ObjectParams, CollisionShape, QueryParams);
+
+	if (bDrawWeaponDamageTraceDebug)
+	{
+		const FColor TraceColor = bHit ? FColor::Red : FColor::Cyan;
+		DrawDebugSphere(World, TraceStart, MeleeTraceRadius, 16, TraceColor, false, WeaponDamageTraceDebugDuration);
+		DrawDebugSphere(World, TraceEnd, MeleeTraceRadius, 16, TraceColor, false, WeaponDamageTraceDebugDuration);
+		DrawDebugLine(World, TraceStart, TraceEnd, TraceColor, false, WeaponDamageTraceDebugDuration, 0, 2.0f);
+
+		for (const FHitResult& CurrentHit : OutHits)
+		{
+			if (!CurrentHit.GetActor())
+			{
+				continue;
+			}
+
+			DrawDebugPoint(World, CurrentHit.ImpactPoint, 16.0f, FColor::Yellow, false, WeaponDamageTraceDebugDuration);
+		}
+	}
+
+	if (!bHit)
 	{
 		return;
 	}
 
-	TSet<AActor*> DamagedActors;
-
 	for (const FHitResult& CurrentHit : OutHits)
 	{
 		AActor* HitActor = CurrentHit.GetActor();
-		if (!HitActor || DamagedActors.Contains(HitActor))
+		TWeakObjectPtr<AActor> HitActorPtr(HitActor);
+		if (!HitActor || AlreadyHitActors.Contains(HitActorPtr))
 		{
 			continue;
 		}
@@ -113,13 +275,22 @@ void UCombatAttackComponent::DoAttackTrace(FName DamageSourceBone)
 			continue;
 		}
 
-		DamagedActors.Add(HitActor);
+		AlreadyHitActors.Add(HitActorPtr);
 
 		const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
 
 		Damageable->ApplyDamage(MeleeDamage, CharacterOwner, CurrentHit.ImpactPoint, Impulse);
 		OnDamageDealt.Broadcast(MeleeDamage, CurrentHit.ImpactPoint);
 	}
+}
+
+void UCombatAttackComponent::ResetAttackTraceWindowState()
+{
+	bIsAttackTraceWindowActive = false;
+	bHasPreviousAttackTracePoints = false;
+	PreviousAttackTraceStart = FVector::ZeroVector;
+	PreviousAttackTraceEnd = FVector::ZeroVector;
+	DamagedActorsInTraceWindow.Reset();
 }
 
 void UCombatAttackComponent::CheckCombo()
@@ -241,6 +412,7 @@ void UCombatAttackComponent::ApplyCombatStyleData(UAMBCombatStyleData* CombatSty
 	ComboCount = 0;
 	bIsChargingAttack = false;
 	bHasLoopedChargedAttack = false;
+	ResetAttackTraceWindowState();
 
 	AttackInputCacheTimeTolerance = CombatStyleData->AttackInputCacheTimeTolerance;
 	MeleeTraceDistance = CombatStyleData->MeleeTraceDistance;

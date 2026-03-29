@@ -153,7 +153,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
 	UAMBCombatStyleData* GetCurrentCombatStyle() const { return CurrentCombatStyle; }
 
-	virtual void DoAttackTrace(FName DamageSourceBone) override;
+	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
+	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
+	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
+	virtual void EndAttackTraceWindow() override;
 	virtual void CheckCombo() override;
 	virtual void CheckChargedAttack() override;
 

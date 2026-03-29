@@ -444,11 +444,35 @@ void AAMBCharacter::HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* I
 	UpdateEquippedItemMesh(ItemData);
 }
 
-void AAMBCharacter::DoAttackTrace(FName DamageSourceBone)
+void AAMBCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
 	if (CombatAttackComponent)
 	{
-		CombatAttackComponent->DoAttackTrace(DamageSourceBone);
+		CombatAttackComponent->DoAttackTrace(TraceStartBone, TraceEndBone);
+	}
+}
+
+void AAMBCharacter::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
+{
+	if (CombatAttackComponent)
+	{
+		CombatAttackComponent->BeginAttackTraceWindow(TraceStartBone, TraceEndBone);
+	}
+}
+
+void AAMBCharacter::TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
+{
+	if (CombatAttackComponent)
+	{
+		CombatAttackComponent->TickAttackTraceWindow(TraceStartBone, TraceEndBone);
+	}
+}
+
+void AAMBCharacter::EndAttackTraceWindow()
+{
+	if (CombatAttackComponent)
+	{
+		CombatAttackComponent->EndAttackTraceWindow();
 	}
 }
 

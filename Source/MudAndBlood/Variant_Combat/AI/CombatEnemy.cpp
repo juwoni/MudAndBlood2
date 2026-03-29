@@ -123,14 +123,16 @@ float ACombatEnemy::GetLastDangerTime() const
 	return LastDangerTime;
 }
 
-void ACombatEnemy::DoAttackTrace(FName DamageSourceBone)
+void ACombatEnemy::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
 	// sweep for objects in front of the character to be hit by the attack
 	TArray<FHitResult> OutHits;
 
-	// start at the provided socket location, sweep forward
-	const FVector TraceStart = GetMesh()->GetSocketLocation(DamageSourceBone);
-	const FVector TraceEnd = TraceStart + (GetActorForwardVector() * MeleeTraceDistance);
+	// start at the provided socket location and sweep toward the end socket if one is provided
+	const FVector TraceStart = GetMesh()->GetSocketLocation(TraceStartBone);
+	const FVector TraceEnd = TraceEndBone.IsNone()
+		? TraceStart + (GetActorForwardVector() * MeleeTraceDistance)
+		: GetMesh()->GetSocketLocation(TraceEndBone);
 
 	// enemies only affect Pawn collision objects; they don't knock back boxes
 	FCollisionObjectQueryParams ObjectParams;

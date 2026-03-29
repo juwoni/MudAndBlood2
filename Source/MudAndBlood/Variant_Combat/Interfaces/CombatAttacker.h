@@ -24,7 +24,19 @@ public:
 
 	/** Performs an attack's collision check. Usually called from a montage's AnimNotify */
 	UFUNCTION(BlueprintCallable, Category="Attacker")
-	virtual void DoAttackTrace(FName DamageSourceBone) = 0;
+	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) = 0;
+
+	/** Starts a continuous attack trace window. Usually called from an AnimNotifyState. */
+	UFUNCTION(BlueprintCallable, Category="Attacker")
+	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) {}
+
+	/** Updates a continuous attack trace window. Usually called every tick by an AnimNotifyState. */
+	UFUNCTION(BlueprintCallable, Category="Attacker")
+	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) {}
+
+	/** Ends a continuous attack trace window. Usually called from an AnimNotifyState. */
+	UFUNCTION(BlueprintCallable, Category="Attacker")
+	virtual void EndAttackTraceWindow() {}
 
 	/** Performs a combo attack's check to continue the string. Usually called from a montage's AnimNotify */
 	UFUNCTION(BlueprintCallable, Category="Attacker")
