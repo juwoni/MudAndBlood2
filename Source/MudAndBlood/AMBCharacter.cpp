@@ -5,6 +5,7 @@
 #include "AbilitySystem/AMBAbilitySystemComponent.h"
 #include "AbilitySystem/AMBCombatAttributeSet.h"
 #include "AbilitySystem/AMBGameplayTags.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Components/ChildActorComponent.h"
 #include "Components/MeshComponent.h"
 #include "Components/SceneComponent.h"
@@ -305,7 +306,11 @@ void AAMBCharacter::DoChargedAttackStart()
 
 void AAMBCharacter::DoChargedAttackEnd()
 {
-	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Release);
+	FGameplayEventData EventPayload;
+	EventPayload.EventTag = TAG_Event_Attack_Charged_Release;
+	EventPayload.Instigator = this;
+	EventPayload.Target = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Charged_Release, EventPayload);
 }
 
 void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
@@ -486,8 +491,9 @@ void AAMBCharacter::CheckCombo()
 
 void AAMBCharacter::CheckChargedAttack()
 {
-	if (CombatAttackComponent)
-	{
-		CombatAttackComponent->CheckChargedAttack();
-	}
+	FGameplayEventData EventPayload;
+	EventPayload.EventTag = TAG_Event_Attack_Charged_Check;
+	EventPayload.Instigator = this;
+	EventPayload.Target = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Charged_Check, EventPayload);
 }

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Characters/Components/DummyDamageableComponent.h"
 #include "DummyCharacter.h"
+#include "Characters/Components/DummyDamageableComponent.h"
 
 #include "Engine/DamageEvents.h"
 #include "GameFramework/CharacterMovementComponent.h"

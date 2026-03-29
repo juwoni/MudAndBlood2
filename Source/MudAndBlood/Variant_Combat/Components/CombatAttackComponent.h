@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "CombatAttackComponent.generated.h"
 
 class ACharacter;
@@ -12,6 +13,7 @@ class UAnimMontage;
 class UAMBCombatStyleData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCombatAttackDamageDealtSignature, float, Damage, FVector, ImpactPoint);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FCombatAttackMontageEndedSignature, UAnimMontage*, bool);
 
 /**
  * Reusable melee attack logic extracted from ACombatCharacter.
@@ -33,14 +35,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat|Input")
 	virtual void DoComboAttackEnd();
 
-	/** Handles charged attack pressed from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Combat|Input")
-	virtual void DoChargedAttackStart();
-
-	/** Handles charged attack released from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Combat|Input")
-	virtual void DoChargedAttackEnd();
-
 	/** Performs the collision check for an attack */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone);
@@ -61,10 +55,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
 	virtual void CheckCombo();
 
-	/** Performs the charged attack hold check */
-	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual void CheckChargedAttack();
-
 	/** Notifies nearby enemies that an attack is coming so they can react */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
 	virtual void NotifyEnemiesOfIncomingAttack();
@@ -76,6 +66,17 @@ public:
 	/** Broadcast after successfully dealing damage so the owner can play VFX/SFX */
 	UPROPERTY(BlueprintAssignable, Category="Combat|Attack")
 	FCombatAttackDamageDealtSignature OnDamageDealt;
+
+	FCombatAttackMontageEndedSignature OnAttackMontageFinished;
+
+	UFUNCTION(BlueprintCallable, Category="Combat|Charged")
+	bool PlayChargedAttackMontage();
+
+	UFUNCTION(BlueprintCallable, Category="Combat|Charged")
+	void AdvanceChargedAttack(bool bShouldLoopCharge);
+
+	UFUNCTION(BlueprintCallable, Category="Combat|Charged")
+	void StopChargedAttackMontage(float BlendOutTime = 0.1f);
 
 protected:
 	/** Max amount of time that may elapse for a non-combo attack input to not be considered stale */
@@ -154,6 +155,8 @@ protected:
 	bool TryResolveAttackTraceLocation(ACharacter* CharacterOwner, FName SocketName, FVector& OutLocation) const;
 	bool TryResolveAttackTracePoints(ACharacter* CharacterOwner, FName TraceStartBone, FName TraceEndBone, FVector& OutTraceStart, FVector& OutTraceEnd) const;
 	void PerformAttackTraceSweep(ACharacter* CharacterOwner, const FVector& TraceStart, const FVector& TraceEnd, TSet<TWeakObjectPtr<AActor>>& AlreadyHitActors);
+	ETraceTypeQuery GetAttackTraceChannel() const;
+	EDrawDebugTrace::Type GetAttackTraceDrawDebugType() const;
 	float GetAttackTraceDebugLifetime(const UWorld* World) const;
 	void ResetAttackTraceWindowState();
 
@@ -162,9 +165,6 @@ protected:
 
 	/** Performs a combo attack */
 	void ComboAttack();
-
-	/** Performs a charged attack */
-	void ChargedAttack();
 
 	/** Called from a delegate when the attack montage ends */
 	void AttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
@@ -184,12 +184,6 @@ private:
 
 	/** Index of the current stage of the melee attack combo */
 	int32 ComboCount = 0;
-
-	/** Flag that determines if the player is currently holding the charged attack input */
-	bool bIsChargingAttack = false;
-
-	/** If true, the charged attack hold check has been tested at least once */
-	bool bHasLoopedChargedAttack = false;
 
 	/** If true, an AnimNotifyState currently owns the melee trace window. */
 	bool bIsAttackTraceWindowActive = false;

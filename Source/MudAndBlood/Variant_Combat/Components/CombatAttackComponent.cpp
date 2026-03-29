@@ -9,6 +9,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "CombatDamageable.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 const FName UCombatAttackComponent::DefaultWeaponAttackTraceStartSocketName(TEXT("AttackStart"));
 const FName UCombatAttackComponent::DefaultWeaponAttackTraceEndSocketName(TEXT("AttackEnd"));
@@ -22,7 +23,6 @@ UCombatAttackComponent::UCombatAttackComponent()
 
 void UCombatAttackComponent::DoComboAttackStart()
 {
-	
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -41,35 +41,6 @@ void UCombatAttackComponent::DoComboAttackStart()
 void UCombatAttackComponent::DoComboAttackEnd()
 {
 	// Stub kept for parity with ACombatCharacter's original public API.
-}
-
-void UCombatAttackComponent::DoChargedAttackStart()
-{
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	bIsChargingAttack = true;
-
-	if (bIsAttacking)
-	{
-		CachedAttackInputTime = World->GetTimeSeconds();
-		return;
-	}
-
-	ChargedAttack();
-}
-
-void UCombatAttackComponent::DoChargedAttackEnd()
-{
-	bIsChargingAttack = false;
-
-	if (bHasLoopedChargedAttack)
-	{
-		CheckChargedAttack();
-	}
 }
 
 void UCombatAttackComponent::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
@@ -223,66 +194,72 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 		return;
 	}
 
-	TArray<FHitResult> OutHits;
+	FHitResult OutHit;
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(CharacterOwner);
 
-	FCollisionObjectQueryParams ObjectParams;
-	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
-	ObjectParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	const FVector TraceDirection = (TraceEnd - TraceStart).GetSafeNormal();
+	const FRotator TraceOrientation = TraceDirection.IsNearlyZero()
+		? CharacterOwner->GetActorForwardVector().Rotation()
+		: TraceDirection.Rotation();
+	const FVector BoxHalfSize(MeleeTraceRadius, MeleeTraceRadius * 0.35f, MeleeTraceRadius * 0.35f);
 
-	FCollisionShape CollisionShape;
-	CollisionShape.SetSphere(MeleeTraceRadius);
-
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(CharacterOwner);
-
-	const bool bHit = World->SweepMultiByObjectType(OutHits, TraceStart, TraceEnd, FQuat::Identity, ObjectParams, CollisionShape, QueryParams);
-
-	if (bDrawWeaponDamageTraceDebug)
-	{
-		const FColor TraceColor = bHit ? FColor::Red : FColor::Cyan;
-		const float DebugLifetime = GetAttackTraceDebugLifetime(World);
-		DrawDebugSphere(World, TraceStart, MeleeTraceRadius, 16, TraceColor, false, DebugLifetime);
-		DrawDebugSphere(World, TraceEnd, MeleeTraceRadius, 16, TraceColor, false, DebugLifetime);
-		DrawDebugLine(World, TraceStart, TraceEnd, TraceColor, false, DebugLifetime, 0, 2.0f);
-
-		for (const FHitResult& CurrentHit : OutHits)
-		{
-			if (!CurrentHit.GetActor())
-			{
-				continue;
-			}
-
-			DrawDebugPoint(World, CurrentHit.ImpactPoint, 16.0f, FColor::Yellow, false, DebugLifetime);
-		}
-	}
+	const bool bHit = UKismetSystemLibrary::BoxTraceSingle(
+		World,
+		TraceStart,
+		TraceEnd,
+		BoxHalfSize,
+		TraceOrientation,
+		GetAttackTraceChannel(),
+		false,
+		ActorsToIgnore,
+		GetAttackTraceDrawDebugType(),
+		OutHit,
+		false,
+		FLinearColor(0.0f, 1.0f, 1.0f, 1.0f),
+		FLinearColor::Red,
+		GetAttackTraceDebugLifetime(World)
+	);
 
 	if (!bHit)
 	{
 		return;
 	}
 
-	for (const FHitResult& CurrentHit : OutHits)
+	AActor* HitActor = OutHit.GetActor();
+	TWeakObjectPtr<AActor> HitActorPtr(HitActor);
+	if (!HitActor || AlreadyHitActors.Contains(HitActorPtr))
 	{
-		AActor* HitActor = CurrentHit.GetActor();
-		TWeakObjectPtr<AActor> HitActorPtr(HitActor);
-		if (!HitActor || AlreadyHitActors.Contains(HitActorPtr))
-		{
-			continue;
-		}
-
-		ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor);
-		if (!Damageable)
-		{
-			continue;
-		}
-
-		AlreadyHitActors.Add(HitActorPtr);
-
-		const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
-
-		Damageable->ApplyDamage(MeleeDamage, CharacterOwner, CurrentHit.ImpactPoint, Impulse);
-		OnDamageDealt.Broadcast(MeleeDamage, CurrentHit.ImpactPoint);
+		return;
 	}
+
+	ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor);
+	if (!Damageable)
+	{
+		return;
+	}
+
+	AlreadyHitActors.Add(HitActorPtr);
+
+	const FVector Impulse = (OutHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
+
+	Damageable->ApplyDamage(MeleeDamage, CharacterOwner, OutHit.ImpactPoint, Impulse);
+	OnDamageDealt.Broadcast(MeleeDamage, OutHit.ImpactPoint);
+}
+
+ETraceTypeQuery UCombatAttackComponent::GetAttackTraceChannel() const
+{
+	return UEngineTypes::ConvertToTraceType(ECC_Visibility);
+}
+
+EDrawDebugTrace::Type UCombatAttackComponent::GetAttackTraceDrawDebugType() const
+{
+	if (!bDrawWeaponDamageTraceDebug)
+	{
+		return EDrawDebugTrace::None;
+	}
+
+	return bIsAttackTraceWindowActive ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::ForDuration;
 }
 
 float UCombatAttackComponent::GetAttackTraceDebugLifetime(const UWorld* World) const
@@ -314,7 +291,7 @@ void UCombatAttackComponent::ResetAttackTraceWindowState()
 void UCombatAttackComponent::CheckCombo()
 {
 	UWorld* World = GetWorld();
-	if (!World || !bIsAttacking || bIsChargingAttack)
+	if (!World || !bIsAttacking)
 	{
 		return;
 	}
@@ -332,21 +309,11 @@ void UCombatAttackComponent::CheckCombo()
 		return;
 	}
 
-	NotifyEnemiesOfIncomingAttack();
+	// NotifyEnemiesOfIncomingAttack();
 
 	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
 	{
 		AnimInstance->Montage_JumpToSection(ComboSectionNames[ComboCount], ComboAttackMontage);
-	}
-}
-
-void UCombatAttackComponent::CheckChargedAttack()
-{
-	bHasLoopedChargedAttack = true;
-
-	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
-	{
-		AnimInstance->Montage_JumpToSection(bIsChargingAttack ? ChargeLoopSection : ChargeAttackSection, ChargedAttackMontage);
 	}
 }
 
@@ -376,31 +343,6 @@ void UCombatAttackComponent::NotifyEnemiesOfIncomingAttack()
 
 	const bool bHit = World->SweepMultiByObjectType(OutHits, TraceStart, TraceEnd, FQuat::Identity, ObjectParams, CollisionShape, QueryParams);
 
-	if (bDrawDangerTraceDebug)
-	{
-		const FVector TraceVector = TraceEnd - TraceStart;
-		const FVector TraceCenter = TraceStart + (TraceVector * 0.5f);
-		const float HalfHeight = (TraceVector.Size() * 0.5f) + DangerTraceRadius;
-		const FQuat TraceRotation = TraceVector.IsNearlyZero()
-			? FQuat::Identity
-			: FQuat::FindBetweenNormals(FVector::UpVector, TraceVector.GetSafeNormal());
-		const FColor TraceColor = bHit ? FColor::Orange : FColor::Green;
-
-		DrawDebugCapsule(World, TraceCenter, HalfHeight, DangerTraceRadius, TraceRotation, TraceColor, false, DangerTraceDebugDuration);
-		DrawDebugSphere(World, TraceStart, DangerTraceRadius, 16, TraceColor, false, DangerTraceDebugDuration);
-		DrawDebugSphere(World, TraceEnd, DangerTraceRadius, 16, TraceColor, false, DangerTraceDebugDuration);
-
-		for (const FHitResult& CurrentHit : OutHits)
-		{
-			if (!CurrentHit.GetActor())
-			{
-				continue;
-			}
-
-			DrawDebugPoint(World, CurrentHit.ImpactPoint, 16.0f, FColor::Red, false, DangerTraceDebugDuration);
-		}
-	}
-
 	if (!bHit)
 	{
 		return;
@@ -428,8 +370,6 @@ void UCombatAttackComponent::ApplyCombatStyleData(UAMBCombatStyleData* CombatSty
 	CachedAttackInputTime = 0.0f;
 	bIsAttacking = false;
 	ComboCount = 0;
-	bIsChargingAttack = false;
-	bHasLoopedChargedAttack = false;
 	ResetAttackTraceWindowState();
 
 	AttackInputCacheTimeTolerance = CombatStyleData->AttackInputCacheTimeTolerance;
@@ -465,10 +405,14 @@ void UCombatAttackComponent::ComboAttack()
 	}
 }
 
-void UCombatAttackComponent::ChargedAttack()
+bool UCombatAttackComponent::PlayChargedAttackMontage()
 {
+	if (bIsAttacking || !ChargedAttackMontage)
+	{
+		return false;
+	}
+
 	bIsAttacking = true;
-	bHasLoopedChargedAttack = false;
 
 	NotifyEnemiesOfIncomingAttack();
 
@@ -478,7 +422,27 @@ void UCombatAttackComponent::ChargedAttack()
 		if (MontageLength > 0.0f)
 		{
 			AnimInstance->Montage_SetEndDelegate(OnAttackMontageEnded, ChargedAttackMontage);
+			return true;
 		}
+	}
+
+	bIsAttacking = false;
+	return false;
+}
+
+void UCombatAttackComponent::AdvanceChargedAttack(bool bShouldLoopCharge)
+{
+	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
+	{
+		AnimInstance->Montage_JumpToSection(bShouldLoopCharge ? ChargeLoopSection : ChargeAttackSection, ChargedAttackMontage);
+	}
+}
+
+void UCombatAttackComponent::StopChargedAttackMontage(float BlendOutTime)
+{
+	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
+	{
+		AnimInstance->Montage_Stop(BlendOutTime, ChargedAttackMontage);
 	}
 }
 
@@ -492,15 +456,10 @@ void UCombatAttackComponent::AttackMontageEnded(UAnimMontage* Montage, bool bInt
 	}
 
 	bIsAttacking = false;
+	OnAttackMontageFinished.Broadcast(Montage, bInterrupted);
 
 	if (World->GetTimeSeconds() - CachedAttackInputTime > AttackInputCacheTimeTolerance)
 	{
-		return;
-	}
-
-	if (bIsChargingAttack)
-	{
-		ChargedAttack();
 		return;
 	}
 
