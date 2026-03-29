@@ -8,6 +8,16 @@ class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
 class UCombatAttackComponent;
 
+enum class EAMBChargedAttackPhase : uint8
+{
+	None,
+	Starting,
+	ReleaseRequested,
+	Charging,
+	Finishing,
+	Ending
+};
+
 UCLASS()
 class MUDANDBLOOD_API UAMBGameplayAbility_ChargedAttack : public UAMBGameplayAbility_CombatAction
 {
@@ -37,6 +47,9 @@ protected:
 	void HandleChargedAttackRelease(FGameplayEventData Payload);
 
 	void HandleAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	void RequestAbilityEnd(bool bWasCancelled);
+	void EnterFinishingPhase(UCombatAttackComponent& CombatAttackComponent);
+	UCombatAttackComponent* GetActiveCombatAttackComponent() const;
 	void UnbindChargedAttackDelegates();
 
 	UPROPERTY()
@@ -47,6 +60,5 @@ protected:
 
 	TWeakObjectPtr<UCombatAttackComponent> ActiveCombatAttackComponent;
 	FDelegateHandle AttackMontageEndedHandle;
-	bool bReleaseRequested = false;
-	bool bHasEnteredChargeLoop = false;
+	EAMBChargedAttackPhase ChargedAttackPhase = EAMBChargedAttackPhase::None;
 };

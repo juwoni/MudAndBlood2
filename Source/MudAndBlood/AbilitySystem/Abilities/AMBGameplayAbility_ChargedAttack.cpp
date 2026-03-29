@@ -8,6 +8,7 @@ UAMBGameplayAbility_ChargedAttack::UAMBGameplayAbility_ChargedAttack()
 {
 	AbilityInputTag = TAG_Input_Attack_Heavy_Start;
 	ActivationOwnedTags.AddTag(TAG_State_Attack_Charged_Active);
+	ActivationBlockedTags.AddTag(TAG_State_Attack_Combo_Active);
 	ActivationBlockedTags.AddTag(TAG_State_Attack_Charged_Active);
 
 	FGameplayTagContainer AssetTags;
@@ -23,16 +24,19 @@ void UAMBGameplayAbility_ChargedAttack::ActivateAbility(
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
+	UnbindChargedAttackDelegates();
+	ActiveCombatAttackComponent.Reset();
+	ChargedAttackPhase = EAMBChargedAttackPhase::None;
+
 	UCombatAttackComponent* CombatAttackComponent = GetCombatAttackComponentFromActorInfo();
 	if (!CombatAttackComponent || !CombatAttackComponent->PlayChargedAttackMontage())
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		RequestAbilityEnd(true);
 		return;
 	}
 
 	ActiveCombatAttackComponent = CombatAttackComponent;
-	bReleaseRequested = false;
-	bHasEnteredChargeLoop = false;
+	ChargedAttackPhase = EAMBChargedAttackPhase::Starting;
 	AttackMontageEndedHandle = CombatAttackComponent->OnAttackMontageFinished.AddUObject(
 		this,
 		&UAMBGameplayAbility_ChargedAttack::HandleAttackMontageEnded);
@@ -60,6 +64,11 @@ void UAMBGameplayAbility_ChargedAttack::ActivateAbility(
 		ChargedAttackReleaseTask->EventReceived.AddDynamic(this, &UAMBGameplayAbility_ChargedAttack::HandleChargedAttackRelease);
 		ChargedAttackReleaseTask->ReadyForActivation();
 	}
+
+	if (!ChargedAttackCheckTask || !ChargedAttackReleaseTask)
+	{
+		RequestAbilityEnd(true);
+	}
 }
 
 void UAMBGameplayAbility_ChargedAttack::EndAbility(
@@ -69,19 +78,21 @@ void UAMBGameplayAbility_ChargedAttack::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
+	if (ChargedAttackPhase == EAMBChargedAttackPhase::Ending)
+	{
+		return;
+	}
+
+	ChargedAttackPhase = EAMBChargedAttackPhase::Ending;
+	UCombatAttackComponent* CombatAttackComponent = ActiveCombatAttackComponent.Get();
 	UnbindChargedAttackDelegates();
 
-	if (bWasCancelled)
+	if (bWasCancelled && CombatAttackComponent)
 	{
-		if (UCombatAttackComponent* CombatAttackComponent = ActiveCombatAttackComponent.Get())
-		{
-			CombatAttackComponent->StopChargedAttackMontage();
-		}
+		CombatAttackComponent->StopChargedAttackMontage();
 	}
 
 	ActiveCombatAttackComponent.Reset();
-	bReleaseRequested = false;
-	bHasEnteredChargeLoop = false;
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -90,38 +101,113 @@ void UAMBGameplayAbility_ChargedAttack::HandleChargedAttackCheckpoint(FGameplayE
 {
 	static_cast<void>(Payload);
 
-	UCombatAttackComponent* CombatAttackComponent = ActiveCombatAttackComponent.Get();
+	UCombatAttackComponent* CombatAttackComponent = GetActiveCombatAttackComponent();
 	if (!CombatAttackComponent)
 	{
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		RequestAbilityEnd(true);
 		return;
 	}
 
-	bHasEnteredChargeLoop = true;
-	CombatAttackComponent->AdvanceChargedAttack(!bReleaseRequested);
+	switch (ChargedAttackPhase)
+	{
+	case EAMBChargedAttackPhase::Starting:
+		ChargedAttackPhase = EAMBChargedAttackPhase::Charging;
+		CombatAttackComponent->AdvanceChargedAttack(true);
+		break;
+	case EAMBChargedAttackPhase::ReleaseRequested:
+		EnterFinishingPhase(*CombatAttackComponent);
+		break;
+	case EAMBChargedAttackPhase::Charging:
+		CombatAttackComponent->AdvanceChargedAttack(true);
+		break;
+	case EAMBChargedAttackPhase::Finishing:
+	case EAMBChargedAttackPhase::Ending:
+	case EAMBChargedAttackPhase::None:
+	default:
+		break;
+	}
 }
 
 void UAMBGameplayAbility_ChargedAttack::HandleChargedAttackRelease(FGameplayEventData Payload)
 {
 	static_cast<void>(Payload);
 
-	bReleaseRequested = true;
-
-	if (bHasEnteredChargeLoop)
+	UCombatAttackComponent* CombatAttackComponent = GetActiveCombatAttackComponent();
+	if (!CombatAttackComponent)
 	{
-		if (UCombatAttackComponent* CombatAttackComponent = ActiveCombatAttackComponent.Get())
-		{
-			CombatAttackComponent->AdvanceChargedAttack(false);
-		}
+		RequestAbilityEnd(true);
+		return;
+	}
+
+	switch (ChargedAttackPhase)
+	{
+	case EAMBChargedAttackPhase::Starting:
+		ChargedAttackPhase = EAMBChargedAttackPhase::ReleaseRequested;
+		break;
+	case EAMBChargedAttackPhase::Charging:
+		EnterFinishingPhase(*CombatAttackComponent);
+		break;
+	case EAMBChargedAttackPhase::ReleaseRequested:
+	case EAMBChargedAttackPhase::Finishing:
+	case EAMBChargedAttackPhase::Ending:
+	case EAMBChargedAttackPhase::None:
+	default:
+		break;
 	}
 }
 
 void UAMBGameplayAbility_ChargedAttack::HandleAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	static_cast<void>(Montage);
-	static_cast<void>(bInterrupted);
 
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	RequestAbilityEnd(bInterrupted);
+}
+
+void UAMBGameplayAbility_ChargedAttack::RequestAbilityEnd(bool bWasCancelled)
+{
+	if (ChargedAttackPhase == EAMBChargedAttackPhase::Ending)
+	{
+		return;
+	}
+
+	if (bWasCancelled && CurrentActorInfo)
+	{
+		CancelAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true);
+		return;
+	}
+
+	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, bWasCancelled);
+}
+
+void UAMBGameplayAbility_ChargedAttack::EnterFinishingPhase(UCombatAttackComponent& CombatAttackComponent)
+{
+	if (ChargedAttackPhase == EAMBChargedAttackPhase::Finishing ||
+		ChargedAttackPhase == EAMBChargedAttackPhase::Ending)
+	{
+		return;
+	}
+
+	// Commit only when the held charge actually converts into the attacking section.
+	// This avoids spending cost/cooldown for a hold that gets cancelled before a swing is released.
+	if (!CurrentActorInfo || !CommitAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo))
+	{
+		RequestAbilityEnd(true);
+		return;
+	}
+
+	ChargedAttackPhase = EAMBChargedAttackPhase::Finishing;
+	CombatAttackComponent.AdvanceChargedAttack(false);
+}
+
+UCombatAttackComponent* UAMBGameplayAbility_ChargedAttack::GetActiveCombatAttackComponent() const
+{
+	if (ChargedAttackPhase == EAMBChargedAttackPhase::Ending ||
+		ChargedAttackPhase == EAMBChargedAttackPhase::None)
+	{
+		return nullptr;
+	}
+
+	return ActiveCombatAttackComponent.Get();
 }
 
 void UAMBGameplayAbility_ChargedAttack::UnbindChargedAttackDelegates()
@@ -143,7 +229,8 @@ void UAMBGameplayAbility_ChargedAttack::UnbindChargedAttackDelegates()
 		if (AttackMontageEndedHandle.IsValid())
 		{
 			CombatAttackComponent->OnAttackMontageFinished.Remove(AttackMontageEndedHandle);
-			AttackMontageEndedHandle.Reset();
 		}
 	}
+
+	AttackMontageEndedHandle.Reset();
 }

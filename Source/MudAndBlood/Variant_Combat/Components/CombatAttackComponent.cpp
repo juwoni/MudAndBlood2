@@ -9,6 +9,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "CombatDamageable.h"
 #include "DrawDebugHelpers.h"
+#include "MudAndBlood.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 const FName UCombatAttackComponent::DefaultWeaponAttackTraceStartSocketName(TEXT("AttackStart"));
@@ -144,16 +145,22 @@ bool UCombatAttackComponent::TryResolveAttackTraceLocation(ACharacter* Character
 		return false;
 	}
 
-	if (const AAMBCharacter* CombatCharacterOwner = Cast<AAMBCharacter>(CharacterOwner))
+	if (UStaticMeshComponent* EquippedWeaponMesh = GetEquippedWeaponMesh(CharacterOwner))
 	{
-		if (UStaticMeshComponent* EquippedWeaponMesh = CombatCharacterOwner->GetEquippedItemMeshComponent())
+		const UStaticMesh* EquippedStaticMesh = EquippedWeaponMesh->GetStaticMesh();
+		if (EquippedWeaponMesh->IsRegistered() && EquippedWeaponMesh->DoesSocketExist(SocketName))
 		{
-			if (EquippedWeaponMesh->IsRegistered() && EquippedWeaponMesh->DoesSocketExist(SocketName))
-			{
-				OutLocation = EquippedWeaponMesh->GetSocketLocation(SocketName);
-				return true;
-			}
+			OutLocation = EquippedWeaponMesh->GetSocketLocation(SocketName);
+			return true;
 		}
+
+		UE_LOG(LogMudAndBlood, Warning,
+		       TEXT("%s failed to resolve attack socket %s on equipped mesh component. Mesh=%s Registered=%s Hidden=%s"),
+		       *GetNameSafe(CharacterOwner),
+		       *SocketName.ToString(),
+		       *GetNameSafe(EquippedStaticMesh),
+		       EquippedWeaponMesh->IsRegistered() ? TEXT("true") : TEXT("false"),
+		       EquippedWeaponMesh->bHiddenInGame ? TEXT("true") : TEXT("false"));
 	}
 
 	return false;
@@ -194,7 +201,7 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 		return;
 	}
 
-	FHitResult OutHit;
+	TArray<FHitResult> OutHits;
 	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(CharacterOwner);
 
@@ -202,9 +209,9 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 	const FRotator TraceOrientation = TraceDirection.IsNearlyZero()
 		? CharacterOwner->GetActorForwardVector().Rotation()
 		: TraceDirection.Rotation();
-	const FVector BoxHalfSize(MeleeTraceRadius, MeleeTraceRadius * 0.35f, MeleeTraceRadius * 0.35f);
+	const FVector BoxHalfSize = GetAttackTraceHalfSize(CharacterOwner);
 
-	const bool bHit = UKismetSystemLibrary::BoxTraceSingle(
+	const bool bHit = UKismetSystemLibrary::BoxTraceMulti(
 		World,
 		TraceStart,
 		TraceEnd,
@@ -214,7 +221,7 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 		false,
 		ActorsToIgnore,
 		GetAttackTraceDrawDebugType(),
-		OutHit,
+		OutHits,
 		false,
 		FLinearColor(0.0f, 1.0f, 1.0f, 1.0f),
 		FLinearColor::Red,
@@ -226,25 +233,57 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 		return;
 	}
 
-	AActor* HitActor = OutHit.GetActor();
-	TWeakObjectPtr<AActor> HitActorPtr(HitActor);
-	if (!HitActor || AlreadyHitActors.Contains(HitActorPtr))
+	for (const FHitResult& OutHit : OutHits)
 	{
-		return;
+		AActor* HitActor = OutHit.GetActor();
+		TWeakObjectPtr<AActor> HitActorPtr(HitActor);
+		if (!HitActor || AlreadyHitActors.Contains(HitActorPtr))
+		{
+			continue;
+		}
+
+		ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor);
+		if (!Damageable)
+		{
+			continue;
+		}
+
+		AlreadyHitActors.Add(HitActorPtr);
+
+		const FVector Impulse = (OutHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
+
+		Damageable->ApplyDamage(MeleeDamage, CharacterOwner, OutHit.ImpactPoint, Impulse);
+		OnDamageDealt.Broadcast(MeleeDamage, OutHit.ImpactPoint);
+	}
+}
+
+UStaticMeshComponent* UCombatAttackComponent::GetEquippedWeaponMesh(ACharacter* CharacterOwner) const
+{
+	const AAMBCharacter* CombatCharacterOwner = Cast<AAMBCharacter>(CharacterOwner);
+	return CombatCharacterOwner ? CombatCharacterOwner->GetEquippedItemMeshComponent() : nullptr;
+}
+
+FVector UCombatAttackComponent::GetAttackTraceHalfSize(ACharacter* CharacterOwner) const
+{
+	if (UStaticMeshComponent* EquippedWeaponMesh = GetEquippedWeaponMesh(CharacterOwner))
+	{
+		if (const UStaticMesh* EquippedStaticMesh = EquippedWeaponMesh->GetStaticMesh())
+		{
+			const FVector MeshScale = EquippedWeaponMesh->GetComponentScale().GetAbs();
+			const FVector LocalHalfSize = EquippedStaticMesh->GetBoundingBox().GetExtent();
+			const FVector ScaledHalfSize = FVector(
+				LocalHalfSize.X * MeshScale.X,
+				LocalHalfSize.Y * MeshScale.Y,
+				LocalHalfSize.Z * MeshScale.Z);
+
+			return FVector(
+				FMath::Max(ScaledHalfSize.X, 1.0f),
+				FMath::Max(ScaledHalfSize.Y, 1.0f),
+				FMath::Max(ScaledHalfSize.Z, 1.0f));
+		}
 	}
 
-	ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor);
-	if (!Damageable)
-	{
-		return;
-	}
-
-	AlreadyHitActors.Add(HitActorPtr);
-
-	const FVector Impulse = (OutHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
-
-	Damageable->ApplyDamage(MeleeDamage, CharacterOwner, OutHit.ImpactPoint, Impulse);
-	OnDamageDealt.Broadcast(MeleeDamage, OutHit.ImpactPoint);
+	return FVector(MeleeTraceRadius, MeleeTraceRadius * 0.35f, MeleeTraceRadius * 0.35f);
 }
 
 ETraceTypeQuery UCombatAttackComponent::GetAttackTraceChannel() const

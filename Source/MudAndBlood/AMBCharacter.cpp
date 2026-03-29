@@ -290,6 +290,17 @@ EAMBCombatStyleType AAMBCharacter::ResolveCombatStyleType(const UAMBCombatStyleD
 
 void AAMBCharacter::DoComboAttackStart()
 {
+	FGameplayEventData EventPayload;
+	EventPayload.EventTag = TAG_Event_Attack_Combo_Input;
+	EventPayload.Instigator = this;
+	EventPayload.Target = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Input, EventPayload);
+
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Attack_Combo_Active))
+	{
+		return;
+	}
+
 	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light);
 }
 
@@ -371,6 +382,11 @@ void AAMBCharacter::UpdateEquippedItemMesh(UAMBItemData* ItemData)
 	UStaticMesh* EquippedMesh = ItemData ? ItemData->EquippedMesh.Get() : nullptr;
 	if (!EquippedMesh)
 	{
+		UE_LOG(LogMudAndBlood, Log,
+		       TEXT("%s cleared equipped item mesh. Item=%s"),
+		       *GetNameSafe(this),
+		       *GetNameSafe(ItemData));
+
 		EquippedItemMeshComponent->SetStaticMesh(nullptr);
 		EquippedItemMeshComponent->SetHiddenInGame(true);
 		return;
@@ -394,6 +410,14 @@ void AAMBCharacter::UpdateEquippedItemMesh(UAMBItemData* ItemData)
 	EquippedItemMeshComponent->SetRelativeRotation(ItemData->EquippedMeshRelativeRotation);
 	EquippedItemMeshComponent->SetRelativeScale3D(ItemData->EquippedMeshRelativeScale);
 	EquippedItemMeshComponent->SetHiddenInGame(false);
+
+	UE_LOG(LogMudAndBlood, Log,
+	       TEXT("%s equipped item mesh updated. Item=%s Mesh=%s AttachSocket=%s SelectedSlot=%d"),
+	       *GetNameSafe(this),
+	       *GetNameSafe(ItemData),
+	       *GetNameSafe(EquippedMesh),
+	       *ItemData->EquippedMeshSocketName.ToString(),
+	       InventoryComponent ? InventoryComponent->GetSelectedSlotIndex() : INDEX_NONE);
 }
 
 void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
@@ -483,10 +507,11 @@ void AAMBCharacter::EndAttackTraceWindow()
 
 void AAMBCharacter::CheckCombo()
 {
-	if (CombatAttackComponent)
-	{
-		CombatAttackComponent->CheckCombo();
-	}
+	FGameplayEventData EventPayload;
+	EventPayload.EventTag = TAG_Event_Attack_Combo_Check;
+	EventPayload.Instigator = this;
+	EventPayload.Target = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Check, EventPayload);
 }
 
 void AAMBCharacter::CheckChargedAttack()

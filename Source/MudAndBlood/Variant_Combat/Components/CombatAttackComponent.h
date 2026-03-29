@@ -152,9 +152,11 @@ protected:
 	FName ChargeAttackSection;
 
 protected:
+	UStaticMeshComponent* GetEquippedWeaponMesh(ACharacter* CharacterOwner) const;
 	bool TryResolveAttackTraceLocation(ACharacter* CharacterOwner, FName SocketName, FVector& OutLocation) const;
 	bool TryResolveAttackTracePoints(ACharacter* CharacterOwner, FName TraceStartBone, FName TraceEndBone, FVector& OutTraceStart, FVector& OutTraceEnd) const;
 	void PerformAttackTraceSweep(ACharacter* CharacterOwner, const FVector& TraceStart, const FVector& TraceEnd, TSet<TWeakObjectPtr<AActor>>& AlreadyHitActors);
+	FVector GetAttackTraceHalfSize(ACharacter* CharacterOwner) const;
 	ETraceTypeQuery GetAttackTraceChannel() const;
 	EDrawDebugTrace::Type GetAttackTraceDrawDebugType() const;
 	float GetAttackTraceDebugLifetime(const UWorld* World) const;
