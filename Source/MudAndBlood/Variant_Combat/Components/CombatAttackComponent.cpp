@@ -96,13 +96,23 @@ void UCombatAttackComponent::DoAttackTrace(FName DamageSourceBone)
 		return;
 	}
 
+	TSet<AActor*> DamagedActors;
+
 	for (const FHitResult& CurrentHit : OutHits)
 	{
-		ICombatDamageable* Damageable = Cast<ICombatDamageable>(CurrentHit.GetActor());
+		AActor* HitActor = CurrentHit.GetActor();
+		if (!HitActor || DamagedActors.Contains(HitActor))
+		{
+			continue;
+		}
+
+		ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor);
 		if (!Damageable)
 		{
 			continue;
 		}
+
+		DamagedActors.Add(HitActor);
 
 		const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
 

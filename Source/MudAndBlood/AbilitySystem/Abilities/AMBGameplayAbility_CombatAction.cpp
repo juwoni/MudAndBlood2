@@ -66,20 +66,26 @@ AAMBCharacter* UAMBGameplayAbility_CombatAction::GetCombatCharacterFromActorInfo
 UAMBGameplayAbility_ComboAttack::UAMBGameplayAbility_ComboAttack()
 {
 	AbilityInputTag = TAG_Input_Attack_Light;
-	AbilityTags.AddTag(TAG_Ability_Attack_Combo);
+	FGameplayTagContainer AssetTags;
+	AssetTags.AddTag(TAG_Ability_Attack_Combo);
+	SetAssetTags(AssetTags);
 	CombatAction = EAMBCombatAbilityAction::ComboStart;
 }
 
 UAMBGameplayAbility_ChargedAttackStart::UAMBGameplayAbility_ChargedAttackStart()
 {
 	AbilityInputTag = TAG_Input_Attack_Heavy_Start;
-	AbilityTags.AddTag(TAG_Ability_Attack_Charged);
+	FGameplayTagContainer AssetTags;
+	AssetTags.AddTag(TAG_Ability_Attack_Charged);
+	SetAssetTags(AssetTags);
 	CombatAction = EAMBCombatAbilityAction::ChargedStart;
 }
 
 UAMBGameplayAbility_ChargedAttackEnd::UAMBGameplayAbility_ChargedAttackEnd()
 {
 	AbilityInputTag = TAG_Input_Attack_Heavy_Release;
-	AbilityTags.AddTag(TAG_Ability_Attack_Charged);
+	FGameplayTagContainer AssetTags;
+	AssetTags.AddTag(TAG_Ability_Attack_Charged);
+	SetAssetTags(AssetTags);
 	CombatAction = EAMBCombatAbilityAction::ChargedEnd;
 }
