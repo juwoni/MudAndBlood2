@@ -45,6 +45,7 @@
 Binaries/*
 Plugins/*/Binaries/*
 
+Content/NiagaraExamples
 Content/ParagonGideon
 Content/ParagonSparrow
 Content/ParagonGreystone
