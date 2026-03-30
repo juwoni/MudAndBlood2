@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Animation/AnimInstance.h"
-#include "Kismet/KismetSystemLibrary.h"
 #include "CombatAttackComponent.generated.h"
 
 class ACharacter;
@@ -19,7 +18,7 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(FCombatAttackMontageEndedSignature, UAnimMo
  * Reusable melee attack logic extracted from ACombatCharacter.
  * Intended to be owned by a Character and driven by input or animation notifies.
  */
-UCLASS(ClassGroup=(Combat), meta=(BlueprintSpawnableComponent))
+UCLASS(Blueprintable, BlueprintType, ClassGroup=(Combat), meta=(BlueprintSpawnableComponent))
 class MUDANDBLOOD_API UCombatAttackComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -36,28 +35,33 @@ public:
 	virtual void DoComboAttackEnd();
 
 	/** Performs the collision check for an attack */
-	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone);
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
+	void DoAttackTrace(FName TraceStartBone, FName TraceEndBone);
+	virtual void DoAttackTrace_Implementation(FName TraceStartBone, FName TraceEndBone);
 
 	/** Starts a continuous attack trace window. */
-	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone);
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
+	void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone);
+	virtual void BeginAttackTraceWindow_Implementation(FName TraceStartBone, FName TraceEndBone);
 
 	/** Updates a continuous attack trace window. */
-	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone);
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
+	void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone);
+	virtual void TickAttackTraceWindow_Implementation(FName TraceStartBone, FName TraceEndBone);
 
 	/** Ends a continuous attack trace window. */
-	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual void EndAttackTraceWindow();
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
+	void EndAttackTraceWindow();
+	virtual void EndAttackTraceWindow_Implementation();
 
 	/** Performs the combo string check */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
 	virtual void CheckCombo();
 
 	/** Notifies nearby enemies that an attack is coming so they can react */
-	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual void NotifyEnemiesOfIncomingAttack();
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
+	void NotifyEnemiesOfIncomingAttack();
+	virtual void NotifyEnemiesOfIncomingAttack_Implementation();
 
 	/** Applies a style data asset so the same component can be reused by multiple weapon types */
 	UFUNCTION(BlueprintCallable, Category="Combat|Style")
@@ -151,33 +155,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Charged")
 	FName ChargeAttackSection;
 
-protected:
-	UStaticMeshComponent* GetEquippedWeaponMesh(ACharacter* CharacterOwner) const;
-	bool TryResolveAttackTraceLocation(ACharacter* CharacterOwner, FName SocketName, FVector& OutLocation) const;
-	bool TryResolveAttackTracePoints(ACharacter* CharacterOwner, FName TraceStartBone, FName TraceEndBone, FVector& OutTraceStart, FVector& OutTraceEnd) const;
-	void PerformAttackTraceSweep(
-		ACharacter* CharacterOwner,
-		const FVector& PreviousTraceStart,
-		const FVector& PreviousTraceEnd,
-		const FVector& CurrentTraceStart,
-		const FVector& CurrentTraceEnd,
-		TSet<TWeakObjectPtr<AActor>>& AlreadyHitActors);
-	bool BuildAttackTraceBox(
-		ACharacter* CharacterOwner,
-		const FVector& SegmentStart,
-		const FVector& SegmentEnd,
-		FVector& OutCenter,
-		FRotator& OutOrientation,
-		FVector& OutHalfSize) const;
-	FVector GetAttackTraceThicknessHalfSize(ACharacter* CharacterOwner) const;
-	ETraceTypeQuery GetAttackTraceChannel() const;
-	EDrawDebugTrace::Type GetAttackTraceDrawDebugType() const;
-	float GetAttackTraceDebugLifetime(const UWorld* World) const;
-	void ResetAttackTraceWindowState();
-
-	static const FName DefaultWeaponAttackTraceStartSocketName;
-	static const FName DefaultWeaponAttackTraceEndSocketName;
-
 	/** Performs a combo attack */
 	void ComboAttack();
 
@@ -199,21 +176,6 @@ private:
 
 	/** Index of the current stage of the melee attack combo */
 	int32 ComboCount = 0;
-
-	/** If true, an AnimNotifyState currently owns the melee trace window. */
-	bool bIsAttackTraceWindowActive = false;
-
-	/** If true, previous frame trace points have been cached for the active attack window. */
-	bool bHasPreviousAttackTracePoints = false;
-
-	/** Previous frame start point used for continuous attack sweeps. */
-	FVector PreviousAttackTraceStart = FVector::ZeroVector;
-
-	/** Previous frame end point used for continuous attack sweeps. */
-	FVector PreviousAttackTraceEnd = FVector::ZeroVector;
-
-	/** Actors already damaged during the current continuous attack window. */
-	TSet<TWeakObjectPtr<AActor>> DamagedActorsInTraceWindow;
 
 	/** Attack montage ended delegate */
 	FOnMontageEnded OnAttackMontageEnded;

@@ -153,6 +153,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
 	UAMBCombatStyleData* GetCurrentCombatStyle() const { return CurrentCombatStyle; }
 
+	UFUNCTION(BlueprintPure, Category="Inventory")
+	UStaticMeshComponent* GetEquippedWeaponMesh() const { return EquippedItemMeshComponent; }
+
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;

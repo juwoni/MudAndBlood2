@@ -62,6 +62,11 @@ void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 		TEXT("/Game/MudAndBlood/DA_Item_Unarmed.DA_Item_Unarmed")
 	);
 
+	UAMBItemData* Item3 = LoadObject<UAMBItemData>(
+		nullptr,
+		TEXT("/Game/MudAndBlood/DA_Item_Sword1.DA_Item_Sword1")
+	);
+
 	if (Item2)
 	{
 		AddItemToSlot(0, Item2, false);
@@ -71,10 +76,10 @@ void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 	{
 		AddItemToSlot(1, Item1, false);
 	}
-	
-	if (Item1)
+
+	if (Item3)
 	{
-		AddItemToSlot(2, Item1, false);
+		AddItemToSlot(2, Item3, false);
 	}
 
 	OnInventoryChanged.Broadcast();
