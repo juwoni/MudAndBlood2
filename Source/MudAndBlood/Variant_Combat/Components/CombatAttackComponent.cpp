@@ -60,7 +60,7 @@ void UCombatAttackComponent::DoAttackTrace(FName TraceStartBone, FName TraceEndB
 	}
 
 	TSet<TWeakObjectPtr<AActor>> DamagedActors;
-	PerformAttackTraceSweep(CharacterOwner, TraceStart, TraceEnd, DamagedActors);
+	PerformAttackTraceSweep(CharacterOwner, TraceStart, TraceEnd, TraceStart, TraceEnd, DamagedActors);
 }
 
 void UCombatAttackComponent::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
@@ -86,7 +86,7 @@ void UCombatAttackComponent::BeginAttackTraceWindow(FName TraceStartBone, FName 
 	PreviousAttackTraceEnd = TraceEnd;
 	bHasPreviousAttackTracePoints = true;
 
-	PerformAttackTraceSweep(CharacterOwner, TraceStart, TraceEnd, DamagedActorsInTraceWindow);
+	PerformAttackTraceSweep(CharacterOwner, TraceStart, TraceEnd, TraceStart, TraceEnd, DamagedActorsInTraceWindow);
 }
 
 void UCombatAttackComponent::TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
@@ -117,17 +117,13 @@ void UCombatAttackComponent::TickAttackTraceWindow(FName TraceStartBone, FName T
 		bHasPreviousAttackTracePoints = true;
 	}
 
-	PerformAttackTraceSweep(CharacterOwner, CurrentTraceStart, CurrentTraceEnd, DamagedActorsInTraceWindow);
-
-	if (!PreviousAttackTraceStart.Equals(CurrentTraceStart))
-	{
-		PerformAttackTraceSweep(CharacterOwner, PreviousAttackTraceStart, CurrentTraceStart, DamagedActorsInTraceWindow);
-	}
-
-	if (!PreviousAttackTraceEnd.Equals(CurrentTraceEnd))
-	{
-		PerformAttackTraceSweep(CharacterOwner, PreviousAttackTraceEnd, CurrentTraceEnd, DamagedActorsInTraceWindow);
-	}
+	PerformAttackTraceSweep(
+		CharacterOwner,
+		PreviousAttackTraceStart,
+		PreviousAttackTraceEnd,
+		CurrentTraceStart,
+		CurrentTraceEnd,
+		DamagedActorsInTraceWindow);
 
 	PreviousAttackTraceStart = CurrentTraceStart;
 	PreviousAttackTraceEnd = CurrentTraceEnd;
@@ -191,8 +187,10 @@ bool UCombatAttackComponent::TryResolveAttackTracePoints(
 
 void UCombatAttackComponent::PerformAttackTraceSweep(
 	ACharacter* CharacterOwner,
-	const FVector& TraceStart,
-	const FVector& TraceEnd,
+	const FVector& PreviousTraceStart,
+	const FVector& PreviousTraceEnd,
+	const FVector& CurrentTraceStart,
+	const FVector& CurrentTraceEnd,
 	TSet<TWeakObjectPtr<AActor>>& AlreadyHitActors)
 {
 	UWorld* World = CharacterOwner ? CharacterOwner->GetWorld() : nullptr;
@@ -201,26 +199,66 @@ void UCombatAttackComponent::PerformAttackTraceSweep(
 		return;
 	}
 
+	FVector PreviousCenter = FVector::ZeroVector;
+	FRotator PreviousOrientation = FRotator::ZeroRotator;
+	FVector PreviousHalfSize = FVector::ZeroVector;
+	if (!BuildAttackTraceBox(
+		CharacterOwner,
+		PreviousTraceStart,
+		PreviousTraceEnd,
+		PreviousCenter,
+		PreviousOrientation,
+		PreviousHalfSize))
+	{
+		return;
+	}
+
+	FVector CurrentCenter = FVector::ZeroVector;
+	FRotator CurrentOrientation = FRotator::ZeroRotator;
+	FVector CurrentHalfSize = FVector::ZeroVector;
+	if (!BuildAttackTraceBox(
+		CharacterOwner,
+		CurrentTraceStart,
+		CurrentTraceEnd,
+		CurrentCenter,
+		CurrentOrientation,
+		CurrentHalfSize))
+	{
+		return;
+	}
+
 	TArray<FHitResult> OutHits;
 	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(CharacterOwner);
 
-	const FVector TraceDirection = (TraceEnd - TraceStart).GetSafeNormal();
-	const FRotator TraceOrientation = TraceDirection.IsNearlyZero()
-		? CharacterOwner->GetActorForwardVector().Rotation()
-		: TraceDirection.Rotation();
-	const FVector BoxHalfSize = GetAttackTraceHalfSize(CharacterOwner);
+	FVector TraceDirection = PreviousOrientation.Vector() + CurrentOrientation.Vector();
+	if (TraceDirection.IsNearlyZero())
+	{
+		TraceDirection = CurrentOrientation.Vector().IsNearlyZero()
+			? (PreviousOrientation.Vector().IsNearlyZero() ? CharacterOwner->GetActorForwardVector() : PreviousOrientation.Vector())
+			: CurrentOrientation.Vector();
+	}
+
+	const FVector BoxTraceStart = PreviousCenter;
+	const FVector BoxTraceEnd = CurrentCenter;
+	const FRotator TraceOrientation = TraceDirection.Rotation();
+	const FVector BoxHalfSize(
+		FMath::Max(PreviousHalfSize.X, CurrentHalfSize.X),
+		FMath::Max(PreviousHalfSize.Y, CurrentHalfSize.Y),
+		FMath::Max(PreviousHalfSize.Z, CurrentHalfSize.Z));
+	
 
 	const bool bHit = UKismetSystemLibrary::BoxTraceMulti(
 		World,
-		TraceStart,
-		TraceEnd,
+		BoxTraceStart,
+		BoxTraceEnd,
 		BoxHalfSize,
 		TraceOrientation,
 		GetAttackTraceChannel(),
 		false,
 		ActorsToIgnore,
-		GetAttackTraceDrawDebugType(),
+		EDrawDebugTrace::ForOneFrame,
+		// GetAttackTraceDrawDebugType(),
 		OutHits,
 		false,
 		FLinearColor(0.0f, 1.0f, 1.0f, 1.0f),
@@ -263,7 +301,33 @@ UStaticMeshComponent* UCombatAttackComponent::GetEquippedWeaponMesh(ACharacter* 
 	return CombatCharacterOwner ? CombatCharacterOwner->GetEquippedItemMeshComponent() : nullptr;
 }
 
-FVector UCombatAttackComponent::GetAttackTraceHalfSize(ACharacter* CharacterOwner) const
+bool UCombatAttackComponent::BuildAttackTraceBox(
+	ACharacter* CharacterOwner,
+	const FVector& SegmentStart,
+	const FVector& SegmentEnd,
+	FVector& OutCenter,
+	FRotator& OutOrientation,
+	FVector& OutHalfSize) const
+{
+	const FVector SegmentVector = SegmentEnd - SegmentStart;
+	const float SegmentLength = SegmentVector.Size();
+	if (SegmentLength <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	OutCenter = (SegmentStart + SegmentEnd) * 0.5f;
+	OutOrientation = SegmentVector.GetSafeNormal().Rotation();
+
+	const FVector ThicknessHalfSize = GetAttackTraceThicknessHalfSize(CharacterOwner);
+	OutHalfSize = FVector(
+		FMath::Max(SegmentLength * 0.5f, 1.0f),
+		ThicknessHalfSize.Y,
+		ThicknessHalfSize.Z);
+	return true;
+}
+
+FVector UCombatAttackComponent::GetAttackTraceThicknessHalfSize(ACharacter* CharacterOwner) const
 {
 	if (UStaticMeshComponent* EquippedWeaponMesh = GetEquippedWeaponMesh(CharacterOwner))
 	{
@@ -271,19 +335,23 @@ FVector UCombatAttackComponent::GetAttackTraceHalfSize(ACharacter* CharacterOwne
 		{
 			const FVector MeshScale = EquippedWeaponMesh->GetComponentScale().GetAbs();
 			const FVector LocalHalfSize = EquippedStaticMesh->GetBoundingBox().GetExtent();
-			const FVector ScaledHalfSize = FVector(
+			const FVector ScaledHalfSize(
 				LocalHalfSize.X * MeshScale.X,
 				LocalHalfSize.Y * MeshScale.Y,
 				LocalHalfSize.Z * MeshScale.Z);
 
+			const float MaxExtent = FMath::Max3(ScaledHalfSize.X, ScaledHalfSize.Y, ScaledHalfSize.Z);
+			const float MinExtent = FMath::Min3(ScaledHalfSize.X, ScaledHalfSize.Y, ScaledHalfSize.Z);
+			const float MidExtent = (ScaledHalfSize.X + ScaledHalfSize.Y + ScaledHalfSize.Z) - MaxExtent - MinExtent;
+
 			return FVector(
-				FMath::Max(ScaledHalfSize.X, 1.0f),
-				FMath::Max(ScaledHalfSize.Y, 1.0f),
-				FMath::Max(ScaledHalfSize.Z, 1.0f));
+				1.0f,
+				FMath::Max(MidExtent, 1.0f),
+				FMath::Max(MinExtent, 1.0f));
 		}
 	}
 
-	return FVector(MeleeTraceRadius, MeleeTraceRadius * 0.35f, MeleeTraceRadius * 0.35f);
+	return FVector(1.0f, FMath::Max(MeleeTraceRadius * 0.35f, 1.0f), FMath::Max(MeleeTraceRadius * 0.35f, 1.0f));
 }
 
 ETraceTypeQuery UCombatAttackComponent::GetAttackTraceChannel() const

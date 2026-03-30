@@ -93,6 +93,11 @@
 		{
 			"Name": "MoverExamples",
 			"Enabled": true
+		},
+		{
+			"Name": "MeleeTrace",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/42b0bb860bcd4995b70d40f152a6e9b9"
 		}
 	],
 	"EpicSampleNameHash": "1673045636"
