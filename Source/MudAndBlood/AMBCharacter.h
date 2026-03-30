@@ -3,17 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AbilitySystemInterface.h"
 #include "GameplayAbilitySpec.h"
 #include "GameplayTagContainer.h"
-#include "GameFramework/Character.h"
-#include "CombatAttacker.h"
+#include "Characters/AMBGASCharacterBase.h"
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "AMBCharacter.generated.h"
 
-class UAbilitySystemComponent;
-class UAMBAbilitySystemComponent;
-class UAMBCombatAttributeSet;
 class UAMBInventoryComponent;
 class UCombatAttackComponent;
 class UInputAction;
@@ -24,7 +19,7 @@ class UStaticMeshComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAMBCombatStyleChangedSignature, int32, SlotIndex, EAMBCombatStyleType, CombatStyleType, UAMBCombatStyleData*, CombatStyleData);
 
 UCLASS()
-class MUDANDBLOOD_API AAMBCharacter : public ACharacter, public IAbilitySystemInterface, public ICombatAttacker
+class MUDANDBLOOD_API AAMBCharacter : public AAMBGASCharacterBase
 {
 	GENERATED_BODY()
 
@@ -32,18 +27,10 @@ public:
 	// Sets default values for this character's properties
 	AAMBCharacter();
 
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-
 	UPROPERTY(BlueprintAssignable, Category="Combat|Style")
 	FAMBCombatStyleChangedSignature OnCombatStyleChanged;
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAMBAbilitySystemComponent> AbilitySystemComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAMBCombatAttributeSet> CombatAttributeSet;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCombatAttackComponent> CombatAttackComponent;
 
@@ -93,7 +80,6 @@ protected:
 	void ChargedAttackPressed();
 	void ChargedAttackReleased();
 
-	void InitializeAbilityActorInfo();
 	void ClearGrantedCombatAbilities();
 	void GrantCombatStyleAbilities(const UAMBCombatStyleData* CombatStyleData);
 	USceneComponent* GetEquippedItemAttachComponent() const;
@@ -156,6 +142,18 @@ public:
 	UFUNCTION(BlueprintPure, Category="Inventory")
 	UStaticMeshComponent* GetEquippedWeaponMesh() const { return EquippedItemMeshComponent; }
 
+	UFUNCTION(BlueprintPure, Category="Combat|Damage")
+	UAMBItemData* GetSelectedItemData() const;
+
+	UFUNCTION(BlueprintPure, Category="Combat|Damage")
+	float GetCurrentEquippedItemBaseDamage() const;
+
+	UFUNCTION(BlueprintPure, Category="Combat|Damage")
+	float GetCurrentWeaponDamage() const;
+
+	UFUNCTION(BlueprintCallable, Category="Combat|Damage")
+	bool ApplyCurrentWeaponDamageToTarget(AActor* TargetActor, FVector DamageLocation, FVector DamageImpulse);
+
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
@@ -163,7 +161,6 @@ public:
 	virtual void CheckCombo() override;
 	virtual void CheckChargedAttack() override;
 
-	FORCEINLINE UAMBAbilitySystemComponent* GetAMBAbilitySystemComponent() const { return AbilitySystemComponent; }
 	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const { return CombatAttackComponent; }
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 	FORCEINLINE UStaticMeshComponent* GetEquippedItemMeshComponent() const { return EquippedItemMeshComponent; }

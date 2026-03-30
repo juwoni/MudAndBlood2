@@ -34,6 +34,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Combat")
 	TObjectPtr<UAMBCombatStyleData> CombatStyleData = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Combat", meta = (ClampMin = 0))
+	float BaseDamage = 1.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Combat")
 	bool bApplyCombatStyleOnSelect = true;
 

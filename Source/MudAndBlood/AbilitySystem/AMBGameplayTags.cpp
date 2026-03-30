@@ -2,6 +2,7 @@
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Combo, "Ability.Attack.Combo");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Charged, "Ability.Attack.Charged");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Damage, "Data.Damage");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Attack_Combo_Check, "Event.Attack.Combo.Check");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Attack_Combo_Input, "Event.Attack.Combo.Input");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Attack_Charged_Check, "Event.Attack.Charged.Check");

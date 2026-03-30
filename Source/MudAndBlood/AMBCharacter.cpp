@@ -3,7 +3,7 @@
 
 #include "AMBCharacter.h"
 #include "AbilitySystem/AMBAbilitySystemComponent.h"
-#include "AbilitySystem/AMBCombatAttributeSet.h"
+#include "AbilitySystem/Attributes/AMBCombatAttributeSet.h"
 #include "AbilitySystem/AMBGameplayTags.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Components/ChildActorComponent.h"
@@ -23,9 +23,6 @@ AAMBCharacter::AAMBCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
-	AbilitySystemComponent = CreateDefaultSubobject<UAMBAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
-	AbilitySystemComponent->SetIsReplicated(true);
-	CombatAttributeSet = CreateDefaultSubobject<UAMBCombatAttributeSet>(TEXT("CombatAttributeSet"));
 	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
 	InventoryComponent = CreateDefaultSubobject<UAMBInventoryComponent>(TEXT("InventoryComponent"));
 	EquippedItemMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EquippedItemMeshComponent"));
@@ -35,17 +32,10 @@ AAMBCharacter::AAMBCharacter()
 	EquippedItemMeshComponent->SetHiddenInGame(true);
 }
 
-UAbilitySystemComponent* AAMBCharacter::GetAbilitySystemComponent() const
-{
-	return AbilitySystemComponent;
-}
-
 // Called when the game starts or when spawned
 void AAMBCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	InitializeAbilityActorInfo();
 
 	if (InventoryComponent)
 	{
@@ -107,14 +97,6 @@ void AAMBCharacter::ChargedAttackPressed()
 void AAMBCharacter::ChargedAttackReleased()
 {
 	DoChargedAttackEnd();
-}
-
-void AAMBCharacter::InitializeAbilityActorInfo()
-{
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-	}
 }
 
 void AAMBCharacter::ClearGrantedCombatAbilities()
@@ -287,6 +269,43 @@ EAMBCombatStyleType AAMBCharacter::ResolveCombatStyleType(const UAMBCombatStyleD
 	}
 
 	return EAMBCombatStyleType::Unarmed;
+}
+
+UAMBItemData* AAMBCharacter::GetSelectedItemData() const
+{
+	return InventoryComponent ? InventoryComponent->GetSelectedItem() : nullptr;
+}
+
+float AAMBCharacter::GetCurrentEquippedItemBaseDamage() const
+{
+	const UAMBItemData* ItemData = GetSelectedItemData();
+	return ItemData ? ItemData->BaseDamage : 0.0f;
+}
+
+float AAMBCharacter::GetCurrentWeaponDamage() const
+{
+	const float BaseDamage = GetCurrentEquippedItemBaseDamage();
+	const float AttackPower = CombatAttributeSet ? CombatAttributeSet->GetAttackPower() : 1.0f;
+	return FMath::Max(0.0f, BaseDamage * AttackPower);
+}
+
+bool AAMBCharacter::ApplyCurrentWeaponDamageToTarget(AActor* TargetActor, FVector DamageLocation, FVector DamageImpulse)
+{
+	static_cast<void>(DamageLocation);
+	static_cast<void>(DamageImpulse);
+
+	if (!TargetActor || TargetActor == this)
+	{
+		return false;
+	}
+
+	const float DamageAmount = GetCurrentWeaponDamage();
+	if (DamageAmount <= 0.0f)
+	{
+		return false;
+	}
+
+	return ApplyDamageToTarget(TargetActor, DamageAmount, this, this);
 }
 
 void AAMBCharacter::DoComboAttackStart()
