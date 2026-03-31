@@ -3,17 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayAbilitySpec.h"
 #include "GameplayTagContainer.h"
 #include "Characters/AMBGASCharacterBase.h"
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "AMBCharacter.generated.h"
 
+class UAMBCombatStyleComponent;
+class UAMBEquipmentVisualComponent;
 class UAMBInventoryComponent;
 class UCombatAttackComponent;
 class UInputAction;
 class UAMBItemData;
-class USceneComponent;
 class UStaticMeshComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAMBCombatStyleChangedSignature, int32, SlotIndex, EAMBCombatStyleType, CombatStyleType, UAMBCombatStyleData*, CombatStyleData);
@@ -38,25 +38,13 @@ protected:
 	TObjectPtr<UAMBInventoryComponent> InventoryComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStaticMeshComponent> EquippedItemMeshComponent;
+	TObjectPtr<UAMBEquipmentVisualComponent> EquippedItemMeshComponent;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
-	TObjectPtr<UAMBCombatStyleData> DefaultCombatStyle;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAMBCombatStyleComponent> CombatStyleComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
 	TObjectPtr<UAMBCombatStyleData> UnarmedCombatStyle;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
-	TObjectPtr<UAMBCombatStyleData> SwordCombatStyle;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
-	TObjectPtr<UAMBCombatStyleData> BowCombatStyle;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Slots")
-	TObjectPtr<UAMBCombatStyleData> CombatSlot1Style;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Slots")
-	TObjectPtr<UAMBCombatStyleData> CombatSlot2Style;
 
 	UPROPERTY(EditAnywhere, Category ="Input")
 	TObjectPtr<UInputAction> ComboAttackAction;
@@ -67,28 +55,9 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UAMBCombatStyleData> CurrentCombatStyle;
-
-	FGameplayTag CurrentCombatStyleTag;
-	EAMBCombatStyleType CurrentCombatStyleType = EAMBCombatStyleType::Unarmed;
-	int32 CurrentCombatSlotIndex = INDEX_NONE;
-
-	TArray<FGameplayAbilitySpecHandle> GrantedCombatAbilityHandles;
-
 	void ComboAttackPressed();
 	void ChargedAttackPressed();
 	void ChargedAttackReleased();
-
-	void ClearGrantedCombatAbilities();
-	void GrantCombatStyleAbilities(const UAMBCombatStyleData* CombatStyleData);
-	USceneComponent* GetEquippedItemAttachComponent() const;
-	void UpdateEquippedItemMesh(UAMBItemData* ItemData);
-	void UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag);
-	bool TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const;
-	UAMBCombatStyleData* GetConfiguredCombatStyle(EAMBCombatStyleType CombatStyleType) const;
-	UAMBCombatStyleData* GetConfiguredCombatSlotStyle(int32 SlotIndex) const;
-	EAMBCombatStyleType ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const;
 
 public:	
 	// Called every frame
@@ -125,22 +94,23 @@ public:
 	void EquipCombatSlot(int32 SlotIndex);
 
 	UFUNCTION()
-	void HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* ItemData);
+	void HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType,
+	                              UAMBCombatStyleData* CombatStyleData);
 
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
-	FGameplayTag GetCurrentCombatStyleTag() const { return CurrentCombatStyleTag; }
+	FGameplayTag GetCurrentCombatStyleTag() const;
 
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
-	EAMBCombatStyleType GetCurrentCombatStyleType() const { return CurrentCombatStyleType; }
+	EAMBCombatStyleType GetCurrentCombatStyleType() const;
 
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
-	int32 GetCurrentCombatSlotIndex() const { return CurrentCombatSlotIndex; }
+	int32 GetCurrentCombatSlotIndex() const;
 
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
-	UAMBCombatStyleData* GetCurrentCombatStyle() const { return CurrentCombatStyle; }
+	UAMBCombatStyleData* GetCurrentCombatStyle() const;
 
 	UFUNCTION(BlueprintPure, Category="Inventory")
-	UStaticMeshComponent* GetEquippedWeaponMesh() const { return EquippedItemMeshComponent; }
+	UStaticMeshComponent* GetEquippedWeaponMesh() const;
 
 	UFUNCTION(BlueprintPure, Category="Combat|Damage")
 	UAMBItemData* GetSelectedItemData() const;
@@ -163,6 +133,8 @@ public:
 
 	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const { return CombatAttackComponent; }
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
-	FORCEINLINE UStaticMeshComponent* GetEquippedItemMeshComponent() const { return EquippedItemMeshComponent; }
+	FORCEINLINE UAMBCombatStyleComponent* GetCombatStyleComponent() const { return CombatStyleComponent; }
+	UStaticMeshComponent* GetEquippedItemMeshComponent() const;
+	UAMBCombatStyleData* GetUnarmedConfiguredCombatStyle() const { return UnarmedCombatStyle; }
 
 };

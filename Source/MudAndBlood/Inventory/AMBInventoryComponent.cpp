@@ -1,6 +1,5 @@
 #include "Inventory/AMBInventoryComponent.h"
 
-#include "AMBCharacter.h"
 #include "Inventory/AMBItemData.h"
 
 UAMBInventoryComponent::UAMBInventoryComponent()
@@ -107,7 +106,6 @@ bool UAMBInventoryComponent::AddItemToSlot(int32 SlotIndex, UAMBItemData* ItemDa
 
 	if (SelectedSlotIndex == SlotIndex)
 	{
-		ApplyCombatStyleFromItem(SlotIndex, ItemData);
 		OnInventorySlotSelected.Broadcast(SlotIndex, ItemData);
 	}
 
@@ -124,7 +122,6 @@ bool UAMBInventoryComponent::SelectInventorySlot(int32 SlotIndex)
 	SelectedSlotIndex = SlotIndex;
 
 	UAMBItemData* SelectedItem = GetItemInSlot(SlotIndex);
-	ApplyCombatStyleFromItem(SlotIndex, SelectedItem);
 	OnInventorySlotSelected.Broadcast(SlotIndex, SelectedItem);
 
 	return true;
@@ -148,22 +145,4 @@ UAMBItemData* UAMBInventoryComponent::GetSelectedItem() const
 bool UAMBInventoryComponent::IsValidInventorySlot(int32 SlotIndex) const
 {
 	return InventoryItems.IsValidIndex(SlotIndex);
-}
-
-void UAMBInventoryComponent::ApplyCombatStyleFromItem(int32 SlotIndex, UAMBItemData* ItemData)
-{
-	if (!ItemData || !ItemData->CanApplyCombatStyleOnSelect())
-	{
-		return;
-	}
-
-	if (AAMBCharacter* Character = GetOwnerCharacter())
-	{
-		Character->SetDefaultCombatStyle(ItemData->CombatStyleData, SlotIndex);
-	}
-}
-
-AAMBCharacter* UAMBInventoryComponent::GetOwnerCharacter() const
-{
-	return Cast<AAMBCharacter>(GetOwner());
 }

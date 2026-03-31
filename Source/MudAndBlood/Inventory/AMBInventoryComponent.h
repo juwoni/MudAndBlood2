@@ -4,7 +4,6 @@
 #include "Components/ActorComponent.h"
 #include "AMBInventoryComponent.generated.h"
 
-class AAMBCharacter;
 class UAMBItemData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryChanged);
@@ -62,8 +61,6 @@ protected:
 private:
 	bool AddItemToSlot(int32 SlotIndex, UAMBItemData* ItemData, bool bBroadcastInventoryChanged = true);
 	bool IsValidInventorySlot(int32 SlotIndex) const;
-	void ApplyCombatStyleFromItem(int32 SlotIndex, UAMBItemData* ItemData);
-	AAMBCharacter* GetOwnerCharacter() const;
 
 	UPROPERTY(Transient)
 	int32 SelectedSlotIndex = INDEX_NONE;

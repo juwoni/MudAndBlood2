@@ -6,10 +6,8 @@
 #include "AbilitySystem/Attributes/AMBCombatAttributeSet.h"
 #include "AbilitySystem/AMBGameplayTags.h"
 #include "AbilitySystemBlueprintLibrary.h"
-#include "Components/ChildActorComponent.h"
-#include "Components/MeshComponent.h"
-#include "Components/SceneComponent.h"
-#include "Components/StaticMeshComponent.h"
+#include "Characters/Components/AMBCombatStyleComponent.h"
+#include "Characters/Components/AMBEquipmentVisualComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Inventory/AMBInventoryComponent.h"
 #include "Inventory/AMBItemData.h"
@@ -25,11 +23,9 @@ AAMBCharacter::AAMBCharacter()
 
 	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
 	InventoryComponent = CreateDefaultSubobject<UAMBInventoryComponent>(TEXT("InventoryComponent"));
-	EquippedItemMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EquippedItemMeshComponent"));
+	EquippedItemMeshComponent = CreateDefaultSubobject<UAMBEquipmentVisualComponent>(TEXT("EquippedItemMeshComponent"));
+	CombatStyleComponent = CreateDefaultSubobject<UAMBCombatStyleComponent>(TEXT("CombatStyleComponent"));
 	EquippedItemMeshComponent->SetupAttachment(GetMesh());
-	EquippedItemMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	EquippedItemMeshComponent->SetGenerateOverlapEvents(false);
-	EquippedItemMeshComponent->SetHiddenInGame(true);
 }
 
 // Called when the game starts or when spawned
@@ -37,28 +33,9 @@ void AAMBCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (InventoryComponent)
+	if (CombatStyleComponent)
 	{
-		InventoryComponent->OnInventorySlotSelected.AddDynamic(this, &AAMBCharacter::HandleInventorySlotSelected);
-		UpdateEquippedItemMesh(InventoryComponent->GetSelectedItem());
-	}
-
-	if (DefaultCombatStyle)
-	{
-		SetCombatStyle(DefaultCombatStyle);
-		return;
-	}
-
-	if (CombatSlot1Style)
-	{
-		CurrentCombatSlotIndex = 1;
-		SetCombatStyle(CombatSlot1Style);
-		return;
-	}
-
-	if (UnarmedCombatStyle)
-	{
-		SetCombatStyle(UnarmedCombatStyle);
+		CombatStyleComponent->OnCombatStyleChanged.AddDynamic(this, &AAMBCharacter::HandleCombatStyleChanged);
 	}
 }
 
@@ -97,178 +74,6 @@ void AAMBCharacter::ChargedAttackPressed()
 void AAMBCharacter::ChargedAttackReleased()
 {
 	DoChargedAttackEnd();
-}
-
-void AAMBCharacter::ClearGrantedCombatAbilities()
-{
-	if (!AbilitySystemComponent || !HasAuthority())
-	{
-		GrantedCombatAbilityHandles.Reset();
-		return;
-	}
-
-	for (const FGameplayAbilitySpecHandle& AbilityHandle : GrantedCombatAbilityHandles)
-	{
-		AbilitySystemComponent->ClearAbility(AbilityHandle);
-	}
-
-	GrantedCombatAbilityHandles.Reset();
-}
-
-void AAMBCharacter::GrantCombatStyleAbilities(const UAMBCombatStyleData* CombatStyleData)
-{
-	if (!AbilitySystemComponent || !CombatStyleData || !HasAuthority())
-	{
-		return;
-	}
-
-	for (const FAMBCombatAbilityGrant& AbilityGrant : CombatStyleData->GrantedAbilities)
-	{
-		if (!AbilityGrant.AbilityClass)
-		{
-			continue;
-		}
-
-		FGameplayAbilitySpec AbilitySpec(AbilityGrant.AbilityClass, AbilityGrant.AbilityLevel);
-		GrantedCombatAbilityHandles.Add(AbilitySystemComponent->GiveAbility(AbilitySpec));
-	}
-}
-
-USceneComponent* AAMBCharacter::GetEquippedItemAttachComponent() const
-{
-	TArray<UChildActorComponent*> ChildActorComponents;
-	GetComponents(ChildActorComponents);
-
-	for (UChildActorComponent* ChildActorComponent : ChildActorComponents)
-	{
-		if (!IsValid(ChildActorComponent) || ChildActorComponent->GetName() != TEXT("VisualOverride"))
-		{
-			continue;
-		}
-
-		if (AActor* ChildActor = ChildActorComponent->GetChildActor())
-		{
-			if (UMeshComponent* MeshComponent = ChildActor->FindComponentByClass<UMeshComponent>())
-			{
-				return MeshComponent;
-			}
-		}
-
-		break;
-	}
-
-	return GetMesh();
-}
-
-void AAMBCharacter::UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag)
-{
-	if (!AbilitySystemComponent)
-	{
-		CurrentCombatStyleTag = NewCombatStyleTag;
-		return;
-	}
-
-	if (CurrentCombatStyleTag.IsValid())
-	{
-		AbilitySystemComponent->RemoveLooseGameplayTag(CurrentCombatStyleTag);
-	}
-
-	CurrentCombatStyleTag = NewCombatStyleTag;
-
-	if (CurrentCombatStyleTag.IsValid())
-	{
-		AbilitySystemComponent->AddLooseGameplayTag(CurrentCombatStyleTag);
-	}
-}
-
-bool AAMBCharacter::TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const
-{
-	if (!AbilitySystemComponent)
-	{
-		UE_LOG(LogMudAndBlood, Warning,
-		       TEXT("%s failed to activate combat input %s: AbilitySystemComponent is missing."),
-		       *GetNameSafe(this),
-		       *InputTag.ToString());
-		return false;
-	}
-
-	if (!AbilitySystemComponent->HasAbilityWithInputTag(InputTag))
-	{
-		UE_LOG(LogMudAndBlood, Warning,
-		       TEXT("%s failed to activate combat input %s: no granted ability matches this input tag. CurrentStyle=%s"
-		       ),
-		       *GetNameSafe(this),
-		       *InputTag.ToString(),
-		       *CurrentCombatStyleTag.ToString());
-		return false;
-	}
-
-	const bool bActivated = AbilitySystemComponent->TryActivateAbilitiesByInputTag(InputTag);
-	if (!bActivated)
-	{
-		UE_LOG(LogMudAndBlood, Warning,
-		       TEXT(
-			       "%s failed to activate combat input %s: matching ability exists but activation was rejected. CurrentStyle=%s"
-		       ),
-		       *GetNameSafe(this),
-		       *InputTag.ToString(),
-		       *CurrentCombatStyleTag.ToString());
-	}
-
-	return bActivated;
-}
-
-UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatStyle(EAMBCombatStyleType CombatStyleType) const
-{
-	switch (CombatStyleType)
-	{
-	case EAMBCombatStyleType::Unarmed:
-		return UnarmedCombatStyle;
-	case EAMBCombatStyleType::Sword:
-		return SwordCombatStyle;
-	case EAMBCombatStyleType::Bow:
-		return BowCombatStyle;
-	default:
-		return nullptr;
-	}
-}
-
-UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatSlotStyle(int32 SlotIndex) const
-{
-	switch (SlotIndex)
-	{
-	case 1:
-		return CombatSlot1Style;
-	case 2:
-		return CombatSlot2Style;
-	default:
-		return nullptr;
-	}
-}
-
-EAMBCombatStyleType AAMBCharacter::ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const
-{
-	if (!CombatStyleData)
-	{
-		return EAMBCombatStyleType::Unarmed;
-	}
-
-	if (CombatStyleData->CombatStyleType != EAMBCombatStyleType::Unarmed || CombatStyleData == UnarmedCombatStyle)
-	{
-		return CombatStyleData->CombatStyleType;
-	}
-
-	if (CombatStyleData == SwordCombatStyle)
-	{
-		return EAMBCombatStyleType::Sword;
-	}
-
-	if (CombatStyleData == BowCombatStyle)
-	{
-		return EAMBCombatStyleType::Bow;
-	}
-
-	return EAMBCombatStyleType::Unarmed;
 }
 
 UAMBItemData* AAMBCharacter::GetSelectedItemData() const
@@ -321,7 +126,10 @@ void AAMBCharacter::DoComboAttackStart()
 		return;
 	}
 
-	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light);
+	if (CombatStyleComponent)
+	{
+		CombatStyleComponent->TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light);
+	}
 }
 
 void AAMBCharacter::DoComboAttackEnd()
@@ -332,7 +140,10 @@ void AAMBCharacter::DoComboAttackEnd()
 
 void AAMBCharacter::DoChargedAttackStart()
 {
-	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Start);
+	if (CombatStyleComponent)
+	{
+		CombatStyleComponent->TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Start);
+	}
 }
 
 void AAMBCharacter::DoChargedAttackEnd()
@@ -346,118 +157,26 @@ void AAMBCharacter::DoChargedAttackEnd()
 
 void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 {
-	if (CurrentCombatStyle == NewCombatStyle)
+	if (CombatStyleComponent)
 	{
-		return;
+		CombatStyleComponent->SetCombatStyle(NewCombatStyle);
 	}
-
-	ClearGrantedCombatAbilities();
-
-	CurrentCombatStyle = NewCombatStyle;
-	UpdateCombatStyleTag(CurrentCombatStyle ? CurrentCombatStyle->CombatStyleTag : FGameplayTag());
-	CurrentCombatStyleType = ResolveCombatStyleType(CurrentCombatStyle);
-
-	if (CombatAttackComponent && CurrentCombatStyle)
-	{
-		CombatAttackComponent->ApplyCombatStyleData(CurrentCombatStyle);
-	}
-
-	GrantCombatStyleAbilities(CurrentCombatStyle);
-
-	UE_LOG(LogMudAndBlood, Log, TEXT("%s switched combat style to %s (Tag=%s)."),
-	       *GetNameSafe(this),
-	       *GetNameSafe(CurrentCombatStyle),
-	       *CurrentCombatStyleTag.ToString());
-
-	OnCombatStyleChanged.Broadcast(CurrentCombatSlotIndex, CurrentCombatStyleType, CurrentCombatStyle);
 }
 
 void AAMBCharacter::SetDefaultCombatStyle(UAMBCombatStyleData* NewDefaultCombatStyle, int32 SourceSlotIndex)
 {
-	const bool bSlotChanged = SourceSlotIndex != INDEX_NONE && CurrentCombatSlotIndex != SourceSlotIndex;
-	const bool bStyleChanged = CurrentCombatStyle != NewDefaultCombatStyle;
-
-	DefaultCombatStyle = NewDefaultCombatStyle;
-
-	if (SourceSlotIndex != INDEX_NONE)
+	if (CombatStyleComponent)
 	{
-		CurrentCombatSlotIndex = SourceSlotIndex;
+		CombatStyleComponent->SetDefaultCombatStyle(NewDefaultCombatStyle, SourceSlotIndex);
 	}
-
-	SetCombatStyle(NewDefaultCombatStyle);
-
-	if (!bStyleChanged && bSlotChanged)
-	{
-		OnCombatStyleChanged.Broadcast(CurrentCombatSlotIndex, CurrentCombatStyleType, CurrentCombatStyle);
-	}
-}
-
-void AAMBCharacter::UpdateEquippedItemMesh(UAMBItemData* ItemData)
-{
-	if (!EquippedItemMeshComponent)
-	{
-		return;
-	}
-
-	UStaticMesh* EquippedMesh = ItemData ? ItemData->EquippedMesh.Get() : nullptr;
-	if (!EquippedMesh)
-	{
-		UE_LOG(LogMudAndBlood, Log,
-		       TEXT("%s cleared equipped item mesh. Item=%s"),
-		       *GetNameSafe(this),
-		       *GetNameSafe(ItemData));
-
-		EquippedItemMeshComponent->SetStaticMesh(nullptr);
-		EquippedItemMeshComponent->SetHiddenInGame(true);
-		return;
-	}
-
-	USceneComponent* AttachComponent = GetEquippedItemAttachComponent();
-	if (!AttachComponent)
-	{
-		EquippedItemMeshComponent->SetStaticMesh(nullptr);
-		EquippedItemMeshComponent->SetHiddenInGame(true);
-		return;
-	}
-
-	EquippedItemMeshComponent->SetStaticMesh(EquippedMesh);
-	EquippedItemMeshComponent->AttachToComponent(
-		AttachComponent,
-		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-		ItemData->EquippedMeshSocketName
-	);
-	EquippedItemMeshComponent->SetRelativeLocation(ItemData->EquippedMeshRelativeLocation);
-	EquippedItemMeshComponent->SetRelativeRotation(ItemData->EquippedMeshRelativeRotation);
-	EquippedItemMeshComponent->SetRelativeScale3D(ItemData->EquippedMeshRelativeScale);
-	EquippedItemMeshComponent->SetHiddenInGame(false);
-
-	UE_LOG(LogMudAndBlood, Log,
-	       TEXT("%s equipped item mesh updated. Item=%s Mesh=%s AttachSocket=%s SelectedSlot=%d"),
-	       *GetNameSafe(this),
-	       *GetNameSafe(ItemData),
-	       *GetNameSafe(EquippedMesh),
-	       *ItemData->EquippedMeshSocketName.ToString(),
-	       InventoryComponent ? InventoryComponent->GetSelectedSlotIndex() : INDEX_NONE);
 }
 
 void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
 {
-	UAMBCombatStyleData* CombatStyle = GetConfiguredCombatStyle(CombatStyleType);
-	if (!CombatStyle)
+	if (CombatStyleComponent)
 	{
-		static const UEnum* CombatStyleEnum = StaticEnum<EAMBCombatStyleType>();
-		const FString CombatStyleName = CombatStyleEnum
-			                                ? CombatStyleEnum->GetNameStringByValue(static_cast<int64>(CombatStyleType))
-			                                : TEXT("Unknown");
-
-		UE_LOG(LogMudAndBlood, Warning,
-		       TEXT("%s cannot equip combat style %s: no style asset is assigned on the character."),
-		       *GetNameSafe(this),
-		       *CombatStyleName);
-		return;
+		CombatStyleComponent->EquipCombatStyleByType(CombatStyleType);
 	}
-
-	SetCombatStyle(CombatStyle);
 }
 
 void AAMBCharacter::SetAttackType(EAMBCombatStyleType CombatStyleType)
@@ -467,30 +186,46 @@ void AAMBCharacter::SetAttackType(EAMBCombatStyleType CombatStyleType)
 
 void AAMBCharacter::EquipCombatSlot(int32 SlotIndex)
 {
-	UAMBCombatStyleData* CombatStyle = GetConfiguredCombatSlotStyle(SlotIndex);
-	if (!CombatStyle)
+	if (InventoryComponent)
 	{
-		UE_LOG(LogMudAndBlood, Warning,
-		       TEXT("%s cannot equip combat slot %d: no UAMBCombatStyleData is assigned to that slot."),
-		       *GetNameSafe(this),
-		       SlotIndex);
-		return;
+		InventoryComponent->SelectInventorySlot(SlotIndex);
 	}
-
-	CurrentCombatSlotIndex = SlotIndex;
-
-	UE_LOG(LogMudAndBlood, Log, TEXT("%s selected combat slot %d -> %s."),
-	       *GetNameSafe(this),
-	       SlotIndex,
-	       *GetNameSafe(CombatStyle));
-
-	SetDefaultCombatStyle(CombatStyle, SlotIndex);
 }
 
-void AAMBCharacter::HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* ItemData)
+void AAMBCharacter::HandleCombatStyleChanged(int32 SlotIndex, EAMBCombatStyleType CombatStyleType,
+                                             UAMBCombatStyleData* CombatStyleData)
 {
-	static_cast<void>(SlotIndex);
-	UpdateEquippedItemMesh(ItemData);
+	OnCombatStyleChanged.Broadcast(SlotIndex, CombatStyleType, CombatStyleData);
+}
+
+FGameplayTag AAMBCharacter::GetCurrentCombatStyleTag() const
+{
+	return CombatStyleComponent ? CombatStyleComponent->GetCurrentCombatStyleTag() : FGameplayTag();
+}
+
+EAMBCombatStyleType AAMBCharacter::GetCurrentCombatStyleType() const
+{
+	return CombatStyleComponent ? CombatStyleComponent->GetCurrentCombatStyleType() : EAMBCombatStyleType::Unarmed;
+}
+
+int32 AAMBCharacter::GetCurrentCombatSlotIndex() const
+{
+	return CombatStyleComponent ? CombatStyleComponent->GetCurrentCombatSlotIndex() : INDEX_NONE;
+}
+
+UAMBCombatStyleData* AAMBCharacter::GetCurrentCombatStyle() const
+{
+	return CombatStyleComponent ? CombatStyleComponent->GetCurrentCombatStyle() : nullptr;
+}
+
+UStaticMeshComponent* AAMBCharacter::GetEquippedWeaponMesh() const
+{
+	return EquippedItemMeshComponent;
+}
+
+UStaticMeshComponent* AAMBCharacter::GetEquippedItemMeshComponent() const
+{
+	return EquippedItemMeshComponent;
 }
 
 void AAMBCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
