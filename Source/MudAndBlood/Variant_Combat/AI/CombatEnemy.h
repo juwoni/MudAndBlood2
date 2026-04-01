@@ -69,6 +69,7 @@ protected:
 	/** Distance ahead of the character that melee attack sphere collision traces will extend */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 500, Units = "cm"))
 	float MeleeTraceDistance = 75.0f;
+	// float MeleeTraceDistance = 30.0f;
 
 	/** Radius of the sphere trace for melee attacks */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 500, Units = "cm"))
