@@ -91,6 +91,7 @@ private:
 
 	FDelegateHandle HealthChangedDelegateHandle;
 	bool bIsDead = false;
+	TWeakObjectPtr<AActor> LastDamageCauser;
 	FVector LastDamageLocation = FVector::ZeroVector;
 	FVector LastDamageImpulse = FVector::ZeroVector;
 };

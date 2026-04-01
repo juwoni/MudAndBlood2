@@ -6,6 +6,7 @@
 #include "AbilitySystem/Effects/AMBGameplayEffect_Damage.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Engine/Engine.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayEffect.h"
@@ -91,6 +92,7 @@ void AAMBGASCharacterBase::CheckChargedAttack()
 
 void AAMBGASCharacterBase::ApplyDamage(float Damage, AActor* DamageCauser, const FVector& DamageLocation, const FVector& DamageImpulse)
 {
+	LastDamageCauser = DamageCauser;
 	LastDamageLocation = DamageLocation;
 	LastDamageImpulse = DamageImpulse;
 
@@ -105,7 +107,21 @@ void AAMBGASCharacterBase::ApplyDamage(float Damage, AActor* DamageCauser, const
 
 void AAMBGASCharacterBase::HandleDeath()
 {
-	HandleOutOfHealth(nullptr);
+	bIsDead = true;
+
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		MovementComponent->DisableMovement();
+	}
+
+	// GetMesh()->SetSimulatePhysics(true);
+	HandleOutOfHealth(LastDamageCauser.Get());
 }
 
 void AAMBGASCharacterBase::ApplyHealing(float Healing, AActor* Healer)
@@ -171,13 +187,15 @@ void AAMBGASCharacterBase::HandleHealthChanged(float OldHealth, float NewHealth,
 	if (NewHealth < OldHealth)
 	{
 		const float Damage = OldHealth - NewHealth;
+		LastDamageCauser = InstigatorActor;
 		BP_OnGASDamaged(Damage, NewHealth, LastDamageLocation, LastDamageImpulse.GetSafeNormal(), InstigatorActor);
 	}
 
 	if (!bIsDead && NewHealth <= 0.0f)
 	{
 		bIsDead = true;
-		HandleOutOfHealth(InstigatorActor);
+		LastDamageCauser = InstigatorActor;
+		HandleDeath();
 	}
 	else if (NewHealth > 0.0f)
 	{
