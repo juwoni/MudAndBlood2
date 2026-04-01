@@ -13,6 +13,11 @@ UCombatAttackComponent::UCombatAttackComponent()
 	OnAttackMontageEnded.BindUObject(this, &UCombatAttackComponent::AttackMontageEnded);
 }
 
+void UCombatAttackComponent::SetWeaponTrace(bool isTracing)
+{
+	bWeaponTrace = isTracing;
+}
+
 void UCombatAttackComponent::DoComboAttackStart()
 {
 	UWorld* World = GetWorld();

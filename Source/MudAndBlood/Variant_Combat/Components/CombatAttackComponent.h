@@ -25,6 +25,11 @@ class MUDANDBLOOD_API UCombatAttackComponent : public UActorComponent
 
 public:
 	UCombatAttackComponent();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace")
+	bool bWeaponTrace; 
+	
+	void SetWeaponTrace(bool isTracing);
 
 	/** Handles combo attack pressed from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Combat|Input")

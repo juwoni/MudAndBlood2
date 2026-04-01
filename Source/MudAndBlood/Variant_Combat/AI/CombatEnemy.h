@@ -177,9 +177,6 @@ public:
 
 	// ~begin ICombatAttacker interface
 
-	/** Performs a sphere trace for attack targets and returns the first valid hit. */
-	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
-
 	/** Performs an attack's collision check */
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 

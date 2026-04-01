@@ -2,30 +2,52 @@
 
 #include "AnimNotifyState_DoAttackTrace.h"
 
+#include "AMBCharacter.h"
 #include "CombatAttacker.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Variant_Combat/Components/CombatAttackComponent.h"
 
-void UAnimNotifyState_DoAttackTrace::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
+void UAnimNotifyState_DoAttackTrace::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+                                                 float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
-	if (ICombatAttacker* AttackerInterface = Cast<ICombatAttacker>(MeshComp ? MeshComp->GetOwner() : nullptr))
+	if (AAMBCharacter* Owner = Cast<AAMBCharacter>(MeshComp ? MeshComp->GetOwner() : nullptr))
 	{
-		AttackerInterface->BeginAttackTraceWindow(AttackBoneName, AttackEndBoneName);
+		if (UCombatAttackComponent* CombatComponent = Owner->GetComponentByClass<UCombatAttackComponent>())
+		{
+			CombatComponent->SetWeaponTrace(true);
+		}
 	}
+	
+	
+	// if (ICombatAttacker* AttackerInterface = Cast<ICombatAttacker>(MeshComp ? MeshComp->GetOwner() : nullptr))
+	// {
+	// 	AttackerInterface->BeginAttackTraceWindow(AttackBoneName, AttackEndBoneName);
+	// }
 }
 
-void UAnimNotifyState_DoAttackTrace::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
+void UAnimNotifyState_DoAttackTrace::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+                                                float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
 {
-	if (ICombatAttacker* AttackerInterface = Cast<ICombatAttacker>(MeshComp ? MeshComp->GetOwner() : nullptr))
-	{
-		AttackerInterface->TickAttackTraceWindow(AttackBoneName, AttackEndBoneName);
-	}
+	// if (ICombatAttacker* AttackerInterface = Cast<ICombatAttacker>(MeshComp ? MeshComp->GetOwner() : nullptr))
+	// {
+	// 	AttackerInterface->TickAttackTraceWindow(AttackBoneName, AttackEndBoneName);
+	// }
 }
 
-void UAnimNotifyState_DoAttackTrace::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
+void UAnimNotifyState_DoAttackTrace::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
+                                               const FAnimNotifyEventReference& EventReference)
 {
-	if (ICombatAttacker* AttackerInterface = Cast<ICombatAttacker>(MeshComp ? MeshComp->GetOwner() : nullptr))
+	// if (ICombatAttacker* AttackerInterface = Cast<ICombatAttacker>(MeshComp ? MeshComp->GetOwner() : nullptr))
+	// {
+	// 	AttackerInterface->EndAttackTraceWindow();
+	// }
+	
+	if (AAMBCharacter* Owner = Cast<AAMBCharacter>(MeshComp ? MeshComp->GetOwner() : nullptr))
 	{
-		AttackerInterface->EndAttackTraceWindow();
+		if (UCombatAttackComponent* CombatComponent = Owner->GetComponentByClass<UCombatAttackComponent>())
+		{
+			CombatComponent->SetWeaponTrace(false);
+		}
 	}
 }
 
