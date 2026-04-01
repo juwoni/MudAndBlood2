@@ -128,6 +128,16 @@ float ACombatEnemy::GetLastDangerTime() const
 
 void ACombatEnemy::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
+	AActor* HitActor = nullptr;
+	FVector ImpactPoint = FVector::ZeroVector;
+	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+}
+
+bool ACombatEnemy::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+{
+	HitActor = nullptr;
+	ImpactPoint = FVector::ZeroVector;
+
 	// sweep for objects in front of the character to be hit by the attack
 	TArray<FHitResult> OutHits;
 
@@ -170,6 +180,12 @@ void ACombatEnemy::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 
 				if (Damageable)
 				{
+					if (!HitActor)
+					{
+						HitActor = CurrentHit.GetActor();
+						ImpactPoint = CurrentHit.ImpactPoint;
+					}
+
 					// knock upwards and away from the impact normal
 					const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector *
 						MeleeLaunchImpulse);
@@ -180,6 +196,8 @@ void ACombatEnemy::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 			}
 		}
 	}
+
+	return HitActor != nullptr;
 }
 
 void ACombatEnemy::CheckCombo()

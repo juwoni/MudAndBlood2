@@ -46,6 +46,7 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Combat|Damage", meta=(DisplayName="On GAS Died"))
 	void BP_OnGASDied(AActor* DamageCauser);
 
+	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;

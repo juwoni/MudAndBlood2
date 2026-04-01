@@ -154,6 +154,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat|Damage")
 	bool ApplyCurrentWeaponDamageToTarget(AActor* TargetActor, FVector DamageLocation, FVector DamageImpulse);
 
+	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;

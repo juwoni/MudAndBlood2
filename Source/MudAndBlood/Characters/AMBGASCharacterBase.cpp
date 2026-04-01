@@ -60,10 +60,20 @@ bool AAMBGASCharacterBase::ApplyHealingToSelf(float HealingAmount, AActor* Heale
 	return ApplyHealthDeltaToTarget(AbilitySystemComponent, FMath::Abs(HealingAmount), Healer, SourceObject);
 }
 
-void AAMBGASCharacterBase::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
+bool AAMBGASCharacterBase::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
 {
 	static_cast<void>(TraceStartBone);
 	static_cast<void>(TraceEndBone);
+	HitActor = nullptr;
+	ImpactPoint = FVector::ZeroVector;
+	return false;
+}
+
+void AAMBGASCharacterBase::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
+{
+	AActor* HitActor = nullptr;
+	FVector ImpactPoint = FVector::ZeroVector;
+	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
 }
 
 void AAMBGASCharacterBase::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)

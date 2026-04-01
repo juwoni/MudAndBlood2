@@ -256,6 +256,16 @@ void ACombatCharacter::AttackMontageEnded(UAnimMontage* Montage, bool bInterrupt
 
 void ACombatCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
+	AActor* HitActor = nullptr;
+	FVector ImpactPoint = FVector::ZeroVector;
+	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+}
+
+bool ACombatCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+{
+	HitActor = nullptr;
+	ImpactPoint = FVector::ZeroVector;
+
 	// sweep for objects in front of the character to be hit by the attack
 	TArray<FHitResult> OutHits;
 
@@ -288,6 +298,12 @@ void ACombatCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 
 			if (Damageable)
 			{
+				if (!HitActor)
+				{
+					HitActor = CurrentHit.GetActor();
+					ImpactPoint = CurrentHit.ImpactPoint;
+				}
+
 				// knock upwards and away from the impact normal
 				const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
 
@@ -299,6 +315,8 @@ void ACombatCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 			}
 		}
 	}
+
+	return HitActor != nullptr;
 }
 
 void ACombatCharacter::CheckCombo()

@@ -39,6 +39,11 @@ public:
 	void DoAttackTrace(FName TraceStartBone, FName TraceEndBone);
 	virtual void DoAttackTrace_Implementation(FName TraceStartBone, FName TraceEndBone);
 
+	/** Performs a sphere trace for attack targets and returns the first valid hit for BP usage. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
+	bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint);
+	virtual bool SphereTraceMultiForObjects_Implementation(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint);
+
 	/** Starts a continuous attack trace window. */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
 	void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone);

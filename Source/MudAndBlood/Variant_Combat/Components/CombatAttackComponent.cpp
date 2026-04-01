@@ -35,6 +35,14 @@ void UCombatAttackComponent::DoComboAttackEnd()
 	// Stub kept for parity with ACombatCharacter's original public API.
 }
 
+bool UCombatAttackComponent::SphereTraceMultiForObjects_Implementation(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+{
+	HitActor = nullptr;
+	ImpactPoint = FVector::ZeroVector;
+	DoAttackTrace(TraceStartBone, TraceEndBone);
+	return false;
+}
+
 void UCombatAttackComponent::DoAttackTrace_Implementation(FName TraceStartBone, FName TraceEndBone)
 {
 	static_cast<void>(TraceStartBone);

@@ -7,10 +7,13 @@
 
 void UAnimNotify_DoAttackTrace::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
+	
 	// cast the owner to the attacker interface
 	if (ICombatAttacker* AttackerInterface = Cast<ICombatAttacker>(MeshComp->GetOwner()))
 	{
-		AttackerInterface->DoAttackTrace(AttackBoneName, AttackEndBoneName);
+		AActor* HitActor = nullptr;
+		FVector ImpactPoint = FVector::ZeroVector;
+		AttackerInterface->SphereTraceMultiForObjects(AttackBoneName, AttackEndBoneName, HitActor, ImpactPoint);
 	}
 }
 

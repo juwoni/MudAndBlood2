@@ -22,6 +22,15 @@ class ICombatAttacker
 
 public:
 
+	/** Performs a sphere trace for attack targets and returns the first valid hit for BP usage. */
+	UFUNCTION(BlueprintCallable, Category="Attacker")
+	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+	{
+		HitActor = nullptr;
+		ImpactPoint = FVector::ZeroVector;
+		return false;
+	}
+
 	/** Performs an attack's collision check. Usually called from a montage's AnimNotify */
 	UFUNCTION(BlueprintCallable, Category="Attacker")
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) = 0;

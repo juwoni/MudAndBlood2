@@ -495,10 +495,22 @@ void AAMBCharacter::HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* I
 
 void AAMBCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
+	AActor* HitActor = nullptr;
+	FVector ImpactPoint = FVector::ZeroVector;
+	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+}
+
+bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+{
+	HitActor = nullptr;
+	ImpactPoint = FVector::ZeroVector;
+
 	if (CombatAttackComponent)
 	{
-		CombatAttackComponent->DoAttackTrace(TraceStartBone, TraceEndBone);
+		return CombatAttackComponent->SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
 	}
+
+	return false;
 }
 
 void AAMBCharacter::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
