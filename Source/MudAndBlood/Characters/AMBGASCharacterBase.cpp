@@ -120,7 +120,7 @@ void AAMBGASCharacterBase::HandleDeath()
 		MovementComponent->DisableMovement();
 	}
 
-	// GetMesh()->SetSimulatePhysics(true);
+	GetMesh()->SetSimulatePhysics(true);
 	HandleOutOfHealth(LastDamageCauser.Get());
 }
 
