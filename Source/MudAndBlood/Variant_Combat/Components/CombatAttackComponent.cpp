@@ -2,9 +2,12 @@
 
 #include "Variant_Combat/Components/CombatAttackComponent.h"
 
+#include "AMBCharacter.h"
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
+#include "CombatDamageable.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 UCombatAttackComponent::UCombatAttackComponent()
 {
@@ -44,14 +47,90 @@ bool UCombatAttackComponent::SphereTraceMultiForObjects_Implementation(FName Tra
 {
 	HitActor = nullptr;
 	ImpactPoint = FVector::ZeroVector;
-	DoAttackTrace(TraceStartBone, TraceEndBone);
-	return false;
+
+	ACharacter* CharacterOwner = GetCharacterOwner();
+	if (!CharacterOwner || !CharacterOwner->GetMesh())
+	{
+		return false;
+	}
+
+	TArray<FHitResult> OutHits;
+
+	const FVector TraceStart = CharacterOwner->GetMesh()->GetSocketLocation(TraceStartBone);
+	const FVector TraceEnd = TraceEndBone.IsNone()
+		? TraceStart + (CharacterOwner->GetActorForwardVector() * MeleeTraceDistance)
+		: CharacterOwner->GetMesh()->GetSocketLocation(TraceEndBone);
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(CharacterOwner);
+
+	const bool bHit = UKismetSystemLibrary::SphereTraceMultiForObjects(
+		this,
+		TraceStart,
+		TraceEnd,
+		MeleeTraceRadius,
+		ObjectTypes,
+		false,
+		ActorsToIgnore,
+		EDrawDebugTrace::ForDuration,
+		// bDrawWeaponDamageTraceDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+		OutHits,
+		true,
+		FLinearColor::Red,
+		FLinearColor::Green,
+		WeaponDamageTraceDebugDuration);
+
+	if (!bHit)
+	{
+		return false;
+	}
+
+	for (const FHitResult& CurrentHit : OutHits)
+	{
+		AActor* CurrentHitActor = CurrentHit.GetActor();
+		if (!IsValid(CurrentHitActor))
+		{
+			continue;
+		}
+
+		ICombatDamageable* Damageable = Cast<ICombatDamageable>(CurrentHitActor);
+		if (!Damageable)
+		{
+			continue;
+		}
+
+		if (!HitActor)
+		{
+			HitActor = CurrentHitActor;
+			ImpactPoint = CurrentHit.ImpactPoint;
+		}
+
+		// const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
+		//
+		// if (AAMBCharacter* PlayerCharacter = Cast<AAMBCharacter>(CharacterOwner))
+		// {
+		// 	if (PlayerCharacter->ApplyCurrentWeaponDamageToTarget(CurrentHitActor, CurrentHit.ImpactPoint, Impulse))
+		// 	{
+		// 		OnDamageDealt.Broadcast(PlayerCharacter->GetCurrentWeaponDamage(), CurrentHit.ImpactPoint);
+		// 	}
+		// }
+		// else
+		// {
+		// 	Damageable->ApplyDamage(MeleeDamage, CharacterOwner, CurrentHit.ImpactPoint, Impulse);
+		// }
+	}
+
+	return HitActor != nullptr;
 }
 
 void UCombatAttackComponent::DoAttackTrace_Implementation(FName TraceStartBone, FName TraceEndBone)
 {
-	static_cast<void>(TraceStartBone);
-	static_cast<void>(TraceEndBone);
+	AActor* HitActor = nullptr;
+	FVector ImpactPoint = FVector::ZeroVector;
+	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
 }
 
 void UCombatAttackComponent::BeginAttackTraceWindow_Implementation(FName TraceStartBone, FName TraceEndBone)
