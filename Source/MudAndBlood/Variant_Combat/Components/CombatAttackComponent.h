@@ -31,6 +31,8 @@ public:
 	
 	void SetWeaponTrace(bool isTracing);
 
+	void SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage, float KnockbackImpulse, float LaunchImpulse);
+
 	/** Handles combo attack pressed from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Combat|Input")
 	virtual void DoComboAttackStart();
@@ -46,7 +48,7 @@ public:
 
 	/** Performs a sphere trace for attack targets and returns the first valid hit for BP usage. */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint);
+	bool AttackSphereTrace(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint);
 
 	/** Starts a continuous attack trace window. */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")

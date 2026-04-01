@@ -507,7 +507,7 @@ bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName Trace
 
 	if (CombatAttackComponent)
 	{
-		return CombatAttackComponent->SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+		return CombatAttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
 	}
 
 	return false;

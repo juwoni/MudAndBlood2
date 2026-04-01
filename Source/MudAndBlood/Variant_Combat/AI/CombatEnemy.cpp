@@ -11,7 +11,7 @@
 #include "TimerManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "Variant_Combat/Components/CombatAttackComponent.h"
 
 ACombatEnemy::ACombatEnemy()
 {
@@ -32,6 +32,9 @@ ACombatEnemy::ACombatEnemy()
 	// create the life bar
 	LifeBar = CreateDefaultSubobject<UWidgetComponent>(TEXT("LifeBar"));
 	LifeBar->SetupAttachment(RootComponent);
+
+	// create the attack component
+	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
 
 	// set the collision capsule size
 	GetCapsuleComponent()->SetCapsuleSize(35.0f, 90.0f);
@@ -138,66 +141,19 @@ bool ACombatEnemy::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceE
 	HitActor = nullptr;
 	ImpactPoint = FVector::ZeroVector;
 
-	// sweep for objects in front of the character to be hit by the attack
-	TArray<FHitResult> OutHits;
-
-	// start at the provided socket location and sweep toward the end socket if one is provided
-	const FVector TraceStart = GetMesh()->GetSocketLocation(TraceStartBone);
-	const FVector TraceEnd = TraceEndBone.IsNone()
-		                         ? TraceStart + (GetActorForwardVector() * MeleeTraceDistance)
-		                         : GetMesh()->GetSocketLocation(TraceEndBone);
-
-	// enemies only affect Pawn collision objects; they don't knock back boxes
-	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
-
-	// ignore self
-	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(this);
-
-	if (UKismetSystemLibrary::SphereTraceMultiForObjects(
-		this,
-		TraceStart,
-		TraceEnd,
-		MeleeTraceRadius,
-		ObjectTypes,
-		false,
-		ActorsToIgnore,
-		EDrawDebugTrace::ForDuration,
-		OutHits,
-		true))
+	if (!CombatAttackComponent)
 	{
-		// iterate over each object hit
-		for (const FHitResult& CurrentHit : OutHits)
-		{
-			auto hitCharacter = CurrentHit.GetActor();
-			/** does the actor have the player tag? */
-			// if (hitCharacter->ActorHasTag(FName("Player")))
-			if (IsValid(hitCharacter))
-			{
-				// check if the actor is damageable
-				ICombatDamageable* Damageable = Cast<ICombatDamageable>(CurrentHit.GetActor());
-
-				if (Damageable)
-				{
-					if (!HitActor)
-					{
-						HitActor = CurrentHit.GetActor();
-						ImpactPoint = CurrentHit.ImpactPoint;
-					}
-
-					// knock upwards and away from the impact normal
-					const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector *
-						MeleeLaunchImpulse);
-
-					// pass the damage event to the actor
-					Damageable->ApplyDamage(MeleeDamage, this, CurrentHit.ImpactPoint, Impulse);
-				}
-			}
-		}
+		return false;
 	}
 
-	return HitActor != nullptr;
+	CombatAttackComponent->SetMeleeTraceSettings(
+		MeleeTraceDistance,
+		MeleeTraceRadius,
+		MeleeDamage,
+		MeleeKnockbackImpulse,
+		MeleeLaunchImpulse);
+
+	return CombatAttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
 }
 
 void ACombatEnemy::CheckCombo()

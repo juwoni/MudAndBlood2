@@ -21,6 +21,15 @@ void UCombatAttackComponent::SetWeaponTrace(bool isTracing)
 	bWeaponTrace = isTracing;
 }
 
+void UCombatAttackComponent::SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage, float KnockbackImpulse, float LaunchImpulse)
+{
+	MeleeTraceDistance = TraceDistance;
+	MeleeTraceRadius = TraceRadius;
+	MeleeDamage = Damage;
+	MeleeKnockbackImpulse = KnockbackImpulse;
+	MeleeLaunchImpulse = LaunchImpulse;
+}
+
 void UCombatAttackComponent::DoComboAttackStart()
 {
 	UWorld* World = GetWorld();
@@ -43,7 +52,7 @@ void UCombatAttackComponent::DoComboAttackEnd()
 	// Stub kept for parity with ACombatCharacter's original public API.
 }
 
-bool UCombatAttackComponent::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
 {
 	HitActor = nullptr;
 	ImpactPoint = FVector::ZeroVector;
@@ -65,7 +74,7 @@ bool UCombatAttackComponent::SphereTraceMultiForObjects(FName TraceStartBone, FN
 	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
 
 	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(CharacterOwner);
+	ActorsToIgnore.Add(CharacterOwner); 
 
 	const bool bHit = UKismetSystemLibrary::SphereTraceMultiForObjects(
 		this,
@@ -131,7 +140,7 @@ void UCombatAttackComponent::DoAttackTrace_Implementation(FName TraceStartBone, 
 {
 	AActor* HitActor = nullptr;
 	FVector ImpactPoint = FVector::ZeroVector;
-	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+	AttackSphereTrace(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
 }
 
 void UCombatAttackComponent::BeginAttackTraceWindow_Implementation(FName TraceStartBone, FName TraceEndBone)

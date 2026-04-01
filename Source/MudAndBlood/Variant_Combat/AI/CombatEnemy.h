@@ -13,6 +13,7 @@
 class UWidgetComponent;
 class UCombatLifeBar;
 class UAnimMontage;
+class UCombatAttackComponent;
 
 /** Completed attack animation delegate for StateTree */
 DECLARE_DELEGATE(FOnEnemyAttackCompleted);
@@ -35,6 +36,10 @@ class ACombatEnemy : public ACharacter, public ICombatAttacker, public ICombatDa
 	/** Life bar widget component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UWidgetComponent* LifeBar;
+
+	/** Reusable attack component used for weapon sphere traces. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UCombatAttackComponent* CombatAttackComponent;
 
 public:
 	
