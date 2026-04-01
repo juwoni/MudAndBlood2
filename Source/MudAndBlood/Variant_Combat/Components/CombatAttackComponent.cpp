@@ -43,7 +43,7 @@ void UCombatAttackComponent::DoComboAttackEnd()
 	// Stub kept for parity with ACombatCharacter's original public API.
 }
 
-bool UCombatAttackComponent::SphereTraceMultiForObjects_Implementation(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+bool UCombatAttackComponent::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
 {
 	HitActor = nullptr;
 	ImpactPoint = FVector::ZeroVector;
@@ -76,6 +76,7 @@ bool UCombatAttackComponent::SphereTraceMultiForObjects_Implementation(FName Tra
 		false,
 		ActorsToIgnore,
 		EDrawDebugTrace::ForDuration,
+		// EDrawDebugTrace::None,
 		// bDrawWeaponDamageTraceDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
 		OutHits,
 		true,
