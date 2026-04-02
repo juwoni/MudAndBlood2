@@ -111,20 +111,23 @@ void AAMBCharacter::ProcessAttack()
 			break;
 		}
 	case EAMBCombatStyleType::Sword:
-		isHit = combatComponent->AttackBoxTrace();
+		{
+			FHitResult HitResult;
+			isHit = combatComponent->AttackBoxTrace(HitResult);
+			if (isHit)
+			{
+				hitActor = HitResult.GetActor();
+			}
+		}
 		if (isHit)
 		{
+			ApplyCurrentWeaponDamageToTarget(hitActor);
 		}
 		break;
 	case EAMBCombatStyleType::Bow:
 		break;
 	default:
 		break;
-	}
-
-	if (isHit)
-	{
-		ApplyCurrentWeaponDamageToTarget(hitActor);
 	}
 }
 

@@ -46,7 +46,7 @@ public:
 
 	/** Performs a box trace for weapon-based attacks and can be overridden in Blueprint. */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual bool AttackBoxTrace();
+	virtual bool AttackBoxTrace(FHitResult& OutHitResult);
 	FVector PreTopSocket = FVector::ZeroVector;
 	FVector PreBottomSocket = FVector::ZeroVector;
 

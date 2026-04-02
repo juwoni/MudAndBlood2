@@ -73,8 +73,10 @@ void UCombatAttackComponent::ApplyWeaponDamage(AActor* HitActor, const FVector& 
 	);
 }
 
-bool UCombatAttackComponent::AttackBoxTrace()
+bool UCombatAttackComponent::AttackBoxTrace(FHitResult& OutHitResult)
 {
+	OutHitResult = FHitResult();
+
 	AAMBCharacter* CharacterOwner = Cast<AAMBCharacter>(GetOwner());
 	if (!CharacterOwner)
 	{
@@ -126,12 +128,29 @@ bool UCombatAttackComponent::AttackBoxTrace()
 	PreTopSocket = localCurrentTopTrace;
 	PreBottomSocket = localCurrentBottomTrace;
 
-	if (OutHits.Num() >= 0)
+	if (!bHit)
 	{
+		return false;
 	}
 
+	for (const FHitResult& CurrentHit : OutHits)
+	{
+		AActor* CurrentHitActor = CurrentHit.GetActor();
+		if (!IsValid(CurrentHitActor))
+		{
+			continue;
+		}
 
-	return bHit;
+		if (!Cast<ICombatDamageable>(CurrentHitActor))
+		{
+			continue;
+		}
+
+		OutHitResult = CurrentHit;
+		return true;
+	}
+
+	return false;
 }
 
 bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName TraceEndBone,
