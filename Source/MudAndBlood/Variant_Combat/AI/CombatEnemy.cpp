@@ -154,7 +154,7 @@ bool ACombatEnemy::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceE
 		MeleeLaunchImpulse);
 
 	FHitResult HitResult;
-	const bool bHit = CombatAttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
+	const bool bHit = CombatAttackComponent->TryAttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
 	if (bHit)
 	{
 		HitActor = HitResult.GetActor();

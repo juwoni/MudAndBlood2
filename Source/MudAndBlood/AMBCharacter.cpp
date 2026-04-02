@@ -103,9 +103,10 @@ void AAMBCharacter::ProcessAttack()
 	case EAMBCombatStyleType::Unarmed:
 		{
 			FHitResult HitResult;
-			if (combatComponent->AttackSphereTrace("hand_r", "None", HitResult))
+			isHit = combatComponent->TryAttackSphereTrace("hand_r", "None", HitResult);
+			if (isHit)
 			{
-				combatComponent->ApplyWeaponDamage(HitResult.GetActor(), HitResult.ImpactPoint);
+				hitActor = HitResult.GetActor();
 			}
 			combatComponent->bWeaponTrace = false;
 			break;
@@ -113,21 +114,22 @@ void AAMBCharacter::ProcessAttack()
 	case EAMBCombatStyleType::Sword:
 		{
 			FHitResult HitResult;
-			isHit = combatComponent->AttackBoxTrace(HitResult);
+			isHit = combatComponent->TryAttackBoxTrace(HitResult);
 			if (isHit)
 			{
 				hitActor = HitResult.GetActor();
 			}
-		}
-		if (isHit)
-		{
-			ApplyCurrentWeaponDamageToTarget(hitActor);
 		}
 		break;
 	case EAMBCombatStyleType::Bow:
 		break;
 	default:
 		break;
+	}
+
+	if (isHit)
+	{
+		ApplyCurrentWeaponDamageToTarget(hitActor);
 	}
 }
 
@@ -571,7 +573,7 @@ bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName Trace
 	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
 	{
 		FHitResult HitResult;
-		const bool bHit = AttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
+		const bool bHit = AttackComponent->TryAttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
 		if (bHit)
 		{
 			HitActor = HitResult.GetActor();

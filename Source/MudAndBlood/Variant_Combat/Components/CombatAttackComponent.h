@@ -46,7 +46,7 @@ public:
 
 	/** Performs a box trace for weapon-based attacks and can be overridden in Blueprint. */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	virtual bool AttackBoxTrace(FHitResult& OutHitResult);
+	virtual bool TryAttackBoxTrace(FHitResult& OutHitResult);
 	FVector PreTopSocket = FVector::ZeroVector;
 	FVector PreBottomSocket = FVector::ZeroVector;
 
@@ -57,7 +57,7 @@ public:
 
 	/** Performs a sphere trace for attack targets and returns the first valid hit for BP usage. */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	bool AttackSphereTrace(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult);
+	bool TryAttackSphereTrace(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult);
 
 	/** Starts a continuous attack trace window. */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")

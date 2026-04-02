@@ -73,7 +73,7 @@ void UCombatAttackComponent::ApplyWeaponDamage(AActor* HitActor, const FVector& 
 	);
 }
 
-bool UCombatAttackComponent::AttackBoxTrace(FHitResult& OutHitResult)
+bool UCombatAttackComponent::TryAttackBoxTrace(FHitResult& OutHitResult)
 {
 	OutHitResult = FHitResult();
 
@@ -153,8 +153,8 @@ bool UCombatAttackComponent::AttackBoxTrace(FHitResult& OutHitResult)
 	return false;
 }
 
-bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName TraceEndBone,
-                                               FHitResult& OutHitResult)
+bool UCombatAttackComponent::TryAttackSphereTrace(FName TraceStartBone, FName TraceEndBone,
+                                                  FHitResult& OutHitResult)
 {
 	OutHitResult = FHitResult();
 
@@ -248,7 +248,7 @@ bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName Trace
 void UCombatAttackComponent::DoAttackTrace_Implementation(FName TraceStartBone, FName TraceEndBone)
 {
 	FHitResult HitResult;
-	AttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
+	TryAttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
 }
 
 void UCombatAttackComponent::BeginAttackTraceWindow_Implementation(FName TraceStartBone, FName TraceEndBone)
