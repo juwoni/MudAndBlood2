@@ -7,6 +7,7 @@
 #include "CombatDamageable.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 UCombatAttackComponent::UCombatAttackComponent()
@@ -59,15 +60,47 @@ void UCombatAttackComponent::DoComboAttackEnd()
 
 bool UCombatAttackComponent::AttackBoxTrace_Implementation()
 {
-	UStaticMeshComponent* equippedWeaponMesh = Cast<AAMBCharacter>(GetOwner())->GetEquippedWeaponMesh();
+	AAMBCharacter* CharacterOwner = Cast<AAMBCharacter>(GetOwner());
+	if (!CharacterOwner)
+	{
+		return false;
+	}
 
+	UStaticMeshComponent* EquippedWeaponMesh = CharacterOwner->GetEquippedWeaponMesh();
+	if (!EquippedWeaponMesh)
+	{
+		return false;
+	}
 
-	FVector localCurrentTopTrace = equippedWeaponMesh->GetSocketLocation("TopTrace");
-	FVector localCurrentBottomTrace = equippedWeaponMesh->GetSocketLocation("BottomTrace");
-	
-	// UKismetSystemLibrary::BoxTraceMultiForObjects();
+	const FVector TraceStart = EquippedWeaponMesh->GetSocketLocation(TEXT("TopTrace"));
+	const FVector TraceEnd = EquippedWeaponMesh->GetSocketLocation(TEXT("BottomTrace"));
+	const FVector BoxExtent(4.0f, 4.0f, FVector::Distance(TraceStart, TraceEnd) * 0.5f);
+	const FRotator TraceRotation = UKismetMathLibrary::FindLookAtRotation(TraceStart, TraceEnd);
 
-	return false;
+	TArray<FHitResult> OutHits;
+
+	const bool bHit = UKismetSystemLibrary::BoxTraceMultiForObjects(
+		this,
+		TraceStart,
+		TraceEnd,
+		BoxExtent,
+		TraceRotation,
+		{
+			UEngineTypes::ConvertToObjectType(ECC_Visibility)
+		},
+		false,
+		{
+			CharacterOwner
+		},
+		EDrawDebugTrace::ForDuration,
+		// bDrawWeaponDamageTraceDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+		OutHits,
+		true,
+		FLinearColor::Red,
+		FLinearColor::Green,
+		WeaponDamageTraceDebugDuration);
+
+	return bHit;
 }
 
 bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName TraceEndBone,

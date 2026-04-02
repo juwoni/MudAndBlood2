@@ -23,7 +23,6 @@ AAMBCharacter::AAMBCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
-	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
 	InventoryComponent = CreateDefaultSubobject<UAMBInventoryComponent>(TEXT("InventoryComponent"));
 	EquippedItemMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EquippedItemMeshComponent"));
 	EquippedItemMeshComponent->SetupAttachment(GetMesh());
@@ -400,7 +399,8 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 	UpdateCombatStyleTag(CurrentCombatStyle ? CurrentCombatStyle->CombatStyleTag : FGameplayTag());
 	CurrentCombatStyleType = ResolveCombatStyleType(CurrentCombatStyle);
 
-	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent(); AttackComponent && CurrentCombatStyle)
+	UCombatAttackComponent* AttackComponent = GetCombatAttackComponent();
+	if (AttackComponent && CurrentCombatStyle)
 	{
 		AttackComponent->ApplyCombatStyleData(CurrentCombatStyle);
 	}
@@ -612,7 +612,7 @@ UCombatAttackComponent* AAMBCharacter::GetCombatAttackComponent() const
 	TArray<UCombatAttackComponent*> CombatAttackComponents;
 	GetComponents(CombatAttackComponents);
 
-	UCombatAttackComponent* PreferredComponent = CombatAttackComponent;
+	UCombatAttackComponent* PreferredComponent = nullptr;
 	for (UCombatAttackComponent* Component : CombatAttackComponents)
 	{
 		if (!IsValid(Component))
