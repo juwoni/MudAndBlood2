@@ -44,6 +44,7 @@
 # Binary Files
 Binaries/*
 Plugins/*/Binaries/*
+Plugins/LudusAI
 
 Content/EasyBuildingSystem
 Content/NiagaraExamples
