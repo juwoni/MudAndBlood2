@@ -12,7 +12,7 @@ void UAnimNotifyState_DoAttackTrace::NotifyBegin(USkeletalMeshComponent* MeshCom
 {
 	if (AAMBCharacter* Owner = Cast<AAMBCharacter>(MeshComp ? MeshComp->GetOwner() : nullptr))
 	{
-		if (UCombatAttackComponent* CombatComponent = Owner->GetComponentByClass<UCombatAttackComponent>())
+		if (UCombatAttackComponent* CombatComponent = Owner->GetCombatAttackComponent())
 		{
 			CombatComponent->SetWeaponTrace(true);
 		}
@@ -44,7 +44,7 @@ void UAnimNotifyState_DoAttackTrace::NotifyEnd(USkeletalMeshComponent* MeshComp,
 	
 	if (AAMBCharacter* Owner = Cast<AAMBCharacter>(MeshComp ? MeshComp->GetOwner() : nullptr))
 	{
-		if (UCombatAttackComponent* CombatComponent = Owner->GetComponentByClass<UCombatAttackComponent>())
+		if (UCombatAttackComponent* CombatComponent = Owner->GetCombatAttackComponent())
 		{
 			CombatComponent->SetWeaponTrace(false);
 		}

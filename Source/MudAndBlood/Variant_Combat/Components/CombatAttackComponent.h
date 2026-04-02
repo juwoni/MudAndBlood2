@@ -29,6 +29,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace")
 	bool bWeaponTrace; 
 	
+	void ApplyWeaponDamage();
 	void SetWeaponTrace(bool isTracing);
 
 	void SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage, float KnockbackImpulse, float LaunchImpulse);
@@ -41,6 +42,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat|Input")
 	virtual void DoComboAttackEnd();
 
+	/** Performs a box trace for weapon-based attacks and can be overridden in Blueprint. */
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
+	bool AttackBoxTrace();
+	virtual bool AttackBoxTrace_Implementation();
+
 	/** Performs the collision check for an attack */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
 	void DoAttackTrace(FName TraceStartBone, FName TraceEndBone);
@@ -48,7 +54,7 @@ public:
 
 	/** Performs a sphere trace for attack targets and returns the first valid hit for BP usage. */
 	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
-	bool AttackSphereTrace(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint);
+	bool AttackSphereTrace(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult);
 
 	/** Starts a continuous attack trace window. */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")

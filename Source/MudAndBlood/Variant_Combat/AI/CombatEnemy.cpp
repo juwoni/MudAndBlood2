@@ -153,7 +153,15 @@ bool ACombatEnemy::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceE
 		MeleeKnockbackImpulse,
 		MeleeLaunchImpulse);
 
-	return CombatAttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+	FHitResult HitResult;
+	const bool bHit = CombatAttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
+	if (bHit)
+	{
+		HitActor = HitResult.GetActor();
+		ImpactPoint = HitResult.ImpactPoint;
+	}
+
+	return bHit;
 }
 
 void ACombatEnemy::CheckCombo()

@@ -93,6 +93,8 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	
+	
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -108,6 +110,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoChargedAttackEnd();
+	
+	UFUNCTION(BlueprintCallable, Category="Combat|Style")
+	void ProcessAttack();
+	
 
 	UFUNCTION(BlueprintCallable, Category="Combat|Style")
 	void SetCombatStyle(UAMBCombatStyleData* NewCombatStyle);
@@ -162,7 +168,7 @@ public:
 	virtual void CheckCombo() override;
 	virtual void CheckChargedAttack() override;
 
-	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const { return CombatAttackComponent; }
+	UCombatAttackComponent* GetCombatAttackComponent() const;
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 	FORCEINLINE UStaticMeshComponent* GetEquippedItemMeshComponent() const { return EquippedItemMeshComponent; }
 

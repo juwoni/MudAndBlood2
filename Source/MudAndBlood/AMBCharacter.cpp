@@ -68,6 +68,49 @@ void AAMBCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
+void AAMBCharacter::ProcessAttack()
+{
+	UCombatAttackComponent* combatComponent = GetCombatAttackComponent();
+	UAMBInventoryComponent* inventoryComponent = GetInventoryComponent();
+
+	if (!combatComponent || !inventoryComponent ||
+		!combatComponent->bWeaponTrace)
+	{
+		return;
+	}
+
+	UAMBItemData* selectedItem = inventoryComponent->GetSelectedItem();
+	if (!selectedItem)
+	{
+		return;
+	}
+
+	switch (selectedItem->CombatStyleType)
+	{
+	case EAMBCombatStyleType::Unarmed:
+		{
+			FHitResult HitResult;
+			if (combatComponent->AttackSphereTrace("hand_r", "None", HitResult))
+			{
+				combatComponent->ApplyWeaponDamage();
+			}
+			combatComponent->bWeaponTrace = false;
+			break;
+		}
+	case EAMBCombatStyleType::Sword:
+		if (combatComponent->AttackBoxTrace())
+		{
+			
+		}
+		break;
+	case EAMBCombatStyleType::Bow:
+		break;
+	default:
+		break;
+	}
+}
+
+
 // Called to bind functionality to input
 void AAMBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -357,9 +400,9 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 	UpdateCombatStyleTag(CurrentCombatStyle ? CurrentCombatStyle->CombatStyleTag : FGameplayTag());
 	CurrentCombatStyleType = ResolveCombatStyleType(CurrentCombatStyle);
 
-	if (CombatAttackComponent && CurrentCombatStyle)
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent(); AttackComponent && CurrentCombatStyle)
 	{
-		CombatAttackComponent->ApplyCombatStyleData(CurrentCombatStyle);
+		AttackComponent->ApplyCombatStyleData(CurrentCombatStyle);
 	}
 
 	GrantCombatStyleAbilities(CurrentCombatStyle);
@@ -500,14 +543,23 @@ void AAMBCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
 }
 
-bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor,
+                                               FVector& ImpactPoint)
 {
 	HitActor = nullptr;
 	ImpactPoint = FVector::ZeroVector;
 
-	if (CombatAttackComponent)
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
 	{
-		return CombatAttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+		FHitResult HitResult;
+		const bool bHit = AttackComponent->AttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
+		if (bHit)
+		{
+			HitActor = HitResult.GetActor();
+			ImpactPoint = HitResult.ImpactPoint;
+		}
+
+		return bHit;
 	}
 
 	return false;
@@ -515,25 +567,25 @@ bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName Trace
 
 void AAMBCharacter::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
 {
-	if (CombatAttackComponent)
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
 	{
-		CombatAttackComponent->BeginAttackTraceWindow(TraceStartBone, TraceEndBone);
+		AttackComponent->BeginAttackTraceWindow(TraceStartBone, TraceEndBone);
 	}
 }
 
 void AAMBCharacter::TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
 {
-	if (CombatAttackComponent)
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
 	{
-		CombatAttackComponent->TickAttackTraceWindow(TraceStartBone, TraceEndBone);
+		AttackComponent->TickAttackTraceWindow(TraceStartBone, TraceEndBone);
 	}
 }
 
 void AAMBCharacter::EndAttackTraceWindow()
 {
-	if (CombatAttackComponent)
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
 	{
-		CombatAttackComponent->EndAttackTraceWindow();
+		AttackComponent->EndAttackTraceWindow();
 	}
 }
 
@@ -553,4 +605,31 @@ void AAMBCharacter::CheckChargedAttack()
 	EventPayload.Instigator = this;
 	EventPayload.Target = this;
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Charged_Check, EventPayload);
+}
+
+UCombatAttackComponent* AAMBCharacter::GetCombatAttackComponent() const
+{
+	TArray<UCombatAttackComponent*> CombatAttackComponents;
+	GetComponents(CombatAttackComponents);
+
+	UCombatAttackComponent* PreferredComponent = CombatAttackComponent;
+	for (UCombatAttackComponent* Component : CombatAttackComponents)
+	{
+		if (!IsValid(Component))
+		{
+			continue;
+		}
+
+		if (!PreferredComponent)
+		{
+			PreferredComponent = Component;
+		}
+
+		if (Component->GetClass() != UCombatAttackComponent::StaticClass())
+		{
+			return Component;
+		}
+	}
+
+	return PreferredComponent;
 }

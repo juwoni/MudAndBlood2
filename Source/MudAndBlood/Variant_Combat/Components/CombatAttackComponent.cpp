@@ -16,12 +16,17 @@ UCombatAttackComponent::UCombatAttackComponent()
 	OnAttackMontageEnded.BindUObject(this, &UCombatAttackComponent::AttackMontageEnded);
 }
 
+void UCombatAttackComponent::ApplyWeaponDamage()
+{
+}
+
 void UCombatAttackComponent::SetWeaponTrace(bool isTracing)
 {
 	bWeaponTrace = isTracing;
 }
 
-void UCombatAttackComponent::SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage, float KnockbackImpulse, float LaunchImpulse)
+void UCombatAttackComponent::SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage,
+                                                   float KnockbackImpulse, float LaunchImpulse)
 {
 	MeleeTraceDistance = TraceDistance;
 	MeleeTraceRadius = TraceRadius;
@@ -52,10 +57,23 @@ void UCombatAttackComponent::DoComboAttackEnd()
 	// Stub kept for parity with ACombatCharacter's original public API.
 }
 
-bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
+bool UCombatAttackComponent::AttackBoxTrace_Implementation()
 {
-	HitActor = nullptr;
-	ImpactPoint = FVector::ZeroVector;
+	UStaticMeshComponent* equippedWeaponMesh = Cast<AAMBCharacter>(GetOwner())->GetEquippedWeaponMesh();
+
+
+	FVector localCurrentTopTrace = equippedWeaponMesh->GetSocketLocation("TopTrace");
+	FVector localCurrentBottomTrace = equippedWeaponMesh->GetSocketLocation("BottomTrace");
+	
+	// UKismetSystemLibrary::BoxTraceMultiForObjects();
+
+	return false;
+}
+
+bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName TraceEndBone,
+                                               FHitResult& OutHitResult)
+{
+	OutHitResult = FHitResult();
 
 	ACharacter* CharacterOwner = GetCharacterOwner();
 	if (!CharacterOwner || !CharacterOwner->GetMesh())
@@ -67,14 +85,14 @@ bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName Trace
 
 	const FVector TraceStart = CharacterOwner->GetMesh()->GetSocketLocation(TraceStartBone);
 	const FVector TraceEnd = TraceEndBone.IsNone()
-		? TraceStart + (CharacterOwner->GetActorForwardVector() * MeleeTraceDistance)
-		: CharacterOwner->GetMesh()->GetSocketLocation(TraceEndBone);
+		                         ? TraceStart + (CharacterOwner->GetActorForwardVector() * MeleeTraceDistance)
+		                         : CharacterOwner->GetMesh()->GetSocketLocation(TraceEndBone);
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
 	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
 
 	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(CharacterOwner); 
+	ActorsToIgnore.Add(CharacterOwner);
 
 	const bool bHit = UKismetSystemLibrary::SphereTraceMultiForObjects(
 		this,
@@ -98,6 +116,8 @@ bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName Trace
 		return false;
 	}
 
+	bool bFoundDamageableHit = false;
+
 	for (const FHitResult& CurrentHit : OutHits)
 	{
 		AActor* CurrentHitActor = CurrentHit.GetActor();
@@ -112,11 +132,17 @@ bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName Trace
 			continue;
 		}
 
-		if (!HitActor)
+		if (!bFoundDamageableHit)
 		{
-			HitActor = CurrentHitActor;
-			ImpactPoint = CurrentHit.ImpactPoint;
+			OutHitResult = CurrentHit;
+			bFoundDamageableHit = true;
 		}
+
+		// if (!HitActor)
+		// {
+		// 	HitActor = CurrentHitActor;
+		// 	ImpactPoint = CurrentHit.ImpactPoint;
+		// }
 
 		// const FVector Impulse = (CurrentHit.ImpactNormal * -MeleeKnockbackImpulse) + (FVector::UpVector * MeleeLaunchImpulse);
 		//
@@ -133,14 +159,13 @@ bool UCombatAttackComponent::AttackSphereTrace(FName TraceStartBone, FName Trace
 		// }
 	}
 
-	return HitActor != nullptr;
+	return bFoundDamageableHit;
 }
 
 void UCombatAttackComponent::DoAttackTrace_Implementation(FName TraceStartBone, FName TraceEndBone)
 {
-	AActor* HitActor = nullptr;
-	FVector ImpactPoint = FVector::ZeroVector;
-	AttackSphereTrace(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+	FHitResult HitResult;
+	AttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
 }
 
 void UCombatAttackComponent::BeginAttackTraceWindow_Implementation(FName TraceStartBone, FName TraceEndBone)
@@ -228,7 +253,8 @@ void UCombatAttackComponent::ComboAttack()
 
 	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
 	{
-		const float MontageLength = AnimInstance->Montage_Play(ComboAttackMontage, 1.0f, EMontagePlayReturnType::MontageLength, 0.0f, true);
+		const float MontageLength = AnimInstance->Montage_Play(ComboAttackMontage, 1.0f,
+		                                                       EMontagePlayReturnType::MontageLength, 0.0f, true);
 		if (MontageLength > 0.0f)
 		{
 			AnimInstance->Montage_SetEndDelegate(OnAttackMontageEnded, ComboAttackMontage);
@@ -249,7 +275,8 @@ bool UCombatAttackComponent::PlayChargedAttackMontage()
 
 	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
 	{
-		const float MontageLength = AnimInstance->Montage_Play(ChargedAttackMontage, 1.0f, EMontagePlayReturnType::MontageLength, 0.0f, true);
+		const float MontageLength = AnimInstance->Montage_Play(ChargedAttackMontage, 1.0f,
+		                                                       EMontagePlayReturnType::MontageLength, 0.0f, true);
 		if (MontageLength > 0.0f)
 		{
 			AnimInstance->Montage_SetEndDelegate(OnAttackMontageEnded, ChargedAttackMontage);
@@ -265,7 +292,8 @@ void UCombatAttackComponent::AdvanceChargedAttack(bool bShouldLoopCharge)
 {
 	if (UAnimInstance* AnimInstance = GetOwnerAnimInstance())
 	{
-		AnimInstance->Montage_JumpToSection(bShouldLoopCharge ? ChargeLoopSection : ChargeAttackSection, ChargedAttackMontage);
+		AnimInstance->Montage_JumpToSection(bShouldLoopCharge ? ChargeLoopSection : ChargeAttackSection,
+		                                    ChargedAttackMontage);
 	}
 }
 
