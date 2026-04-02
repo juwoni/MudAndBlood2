@@ -170,7 +170,7 @@ public:
 	virtual void CheckCombo() override;
 	virtual void CheckChargedAttack() override;
 
-	UCombatAttackComponent* GetCombatAttackComponent() const;
+	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const {return CombatAttackComponent;}
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 	FORCEINLINE UStaticMeshComponent* GetEquippedItemMeshComponent() const { return EquippedItemMeshComponent; }
 

@@ -627,8 +627,3 @@ void AAMBCharacter::CheckChargedAttack()
 	EventPayload.Target = this;
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Charged_Check, EventPayload);
 }
-
-UCombatAttackComponent* AAMBCharacter::GetCombatAttackComponent() const
-{
-	return CombatAttackComponent;
-}
