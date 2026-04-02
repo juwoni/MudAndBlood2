@@ -1,3 +1,4 @@
+#include "AMBGameplayAbility_ChargedAttack.h"
 #include "AbilitySystem/Abilities/AMBGameplayAbility_ChargedAttack.h"
 
 #include "AbilitySystem/AMBGameplayTags.h"

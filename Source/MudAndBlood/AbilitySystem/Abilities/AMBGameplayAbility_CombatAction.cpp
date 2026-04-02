@@ -1,3 +1,4 @@
+#include "AMBGameplayAbility_CombatAction.h"
 #include "AbilitySystem/Abilities/AMBGameplayAbility_CombatAction.h"
 
 #include "AMBCharacter.h"
@@ -17,7 +18,7 @@ UCombatAttackComponent* UAMBGameplayAbility_CombatAction::GetCombatAttackCompone
 {
 	if (AAMBCharacter* Character = GetCombatCharacterFromActorInfo())
 	{
-		return Character->GetCombatAttackComponent();
+		return Character->FindComponentByClass<UCombatAttackComponent>();
 	}
 
 	return nullptr;

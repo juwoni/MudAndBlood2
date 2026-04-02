@@ -23,13 +23,25 @@ AAMBCharacter::AAMBCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
-	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
 	InventoryComponent = CreateDefaultSubobject<UAMBInventoryComponent>(TEXT("InventoryComponent"));
 	EquippedItemMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EquippedItemMeshComponent"));
 	EquippedItemMeshComponent->SetupAttachment(GetMesh());
 	EquippedItemMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	EquippedItemMeshComponent->SetGenerateOverlapEvents(false);
 	EquippedItemMeshComponent->SetHiddenInGame(true);
+}
+
+/**
+*   1. 생성자
+	2. 컴포넌트 생성/초기화
+	3. PostInitializeComponents()
+	4. BeginPlay()
+ */
+void AAMBCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	CombatAttackComponent = FindComponentByClass<UCombatAttackComponent>();
 }
 
 // Called when the game starts or when spawned

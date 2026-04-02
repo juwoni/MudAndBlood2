@@ -64,6 +64,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category ="Input")
 	TObjectPtr<UInputAction> ChargedAttackAction;
 
+	virtual void PostInitializeComponents() override;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -162,7 +164,6 @@ public:
 	virtual void CheckCombo() override;
 	virtual void CheckChargedAttack() override;
 
-	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const { return CombatAttackComponent; }
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 	FORCEINLINE UStaticMeshComponent* GetEquippedItemMeshComponent() const { return EquippedItemMeshComponent; }
 
