@@ -1,5 +1,4 @@
 #include "AMBGameplayAbility_CombatAction.h"
-#include "AbilitySystem/Abilities/AMBGameplayAbility_CombatAction.h"
 
 #include "AMBCharacter.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"

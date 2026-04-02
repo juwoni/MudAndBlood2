@@ -1,4 +1,4 @@
-#include "AbilitySystem/Abilities/AMBGameplayAbility_ComboAttack.h"
+#include "AMBGameplayAbility_ComboAttack.h"
 
 #include "AbilitySystem/AMBGameplayTags.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"

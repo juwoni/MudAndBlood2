@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AbilitySystem/Abilities/AMBGameplayAbility_CombatAction.h"
+#include "AMBGameplayAbility_CombatAction.h"
 #include "AMBGameplayAbility_ChargedAttack.generated.h"
 
 class UAbilityTask_WaitGameplayEvent;
