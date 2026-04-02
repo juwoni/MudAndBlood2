@@ -12,6 +12,7 @@ class UAnimMontage;
 class UAMBCombatStyleData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCombatAttackDamageDealtSignature, float, Damage, FVector, ImpactPoint);
+
 DECLARE_MULTICAST_DELEGATE_TwoParams(FCombatAttackMontageEndedSignature, UAnimMontage*, bool);
 
 /**
@@ -25,14 +26,15 @@ class MUDANDBLOOD_API UCombatAttackComponent : public UActorComponent
 
 public:
 	UCombatAttackComponent();
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace")
-	bool bWeaponTrace; 
-	
-	void ApplyWeaponDamage();
+	bool bWeaponTrace;
+
+	void ApplyWeaponDamage(AActor* HitActor, const FVector& ImpactPoint);
 	void SetWeaponTrace(bool isTracing);
 
-	void SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage, float KnockbackImpulse, float LaunchImpulse);
+	void SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage, float KnockbackImpulse,
+	                           float LaunchImpulse);
 
 	/** Handles combo attack pressed from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Combat|Input")
@@ -43,9 +45,10 @@ public:
 	virtual void DoComboAttackEnd();
 
 	/** Performs a box trace for weapon-based attacks and can be overridden in Blueprint. */
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
-	bool AttackBoxTrace();
-	virtual bool AttackBoxTrace_Implementation();
+	UFUNCTION(BlueprintCallable, Category="Combat|Attack")
+	virtual bool AttackBoxTrace();
+	FVector PreTopSocket = FVector::ZeroVector;
+	FVector PreBottomSocket = FVector::ZeroVector;
 
 	/** Performs the collision check for an attack */
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category="Combat|Attack")
@@ -101,23 +104,28 @@ public:
 
 protected:
 	/** Max amount of time that may elapse for a non-combo attack input to not be considered stale */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack", meta = (ClampMin = 0, ClampMax = 5, Units = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack",
+		meta = (ClampMin = 0, ClampMax = 5, Units = "s"))
 	float AttackInputCacheTimeTolerance = 1.0f;
 
 	/** Distance ahead of the character that melee attack sphere collision traces will extend */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 500, Units="cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace",
+		meta = (ClampMin = 0, ClampMax = 500, Units="cm"))
 	float MeleeTraceDistance = 75.0f;
 
 	/** Radius of the sphere trace for melee attacks */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 200, Units = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace",
+		meta = (ClampMin = 0, ClampMax = 200, Units = "cm"))
 	float MeleeTraceRadius = 75.0f;
 
 	/** Distance ahead of the character that enemies will be notified of incoming attacks */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 500, Units = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace",
+		meta = (ClampMin = 0, ClampMax = 500, Units = "cm"))
 	float DangerTraceDistance = 300.0f;
 
 	/** Radius of the sphere trace to notify enemies of incoming attacks */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 200, Units = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace",
+		meta = (ClampMin = 0, ClampMax = 200, Units = "cm"))
 	float DangerTraceRadius = 100.0f;
 
 	/** If true, draw debug geometry whenever incoming attack danger is notified. */
@@ -125,7 +133,8 @@ protected:
 	bool bDrawDangerTraceDebug = false;
 
 	/** How long the danger trace debug geometry should remain visible. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug", meta = (ClampMin = 0, ClampMax = 10, Units = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug",
+		meta = (ClampMin = 0, ClampMax = 10, Units = "s"))
 	float DangerTraceDebugDuration = 1.0f;
 
 	/** If true, draw debug geometry for the actual attack sweep used to deal damage. */
@@ -133,7 +142,8 @@ protected:
 	bool bDrawWeaponDamageTraceDebug = false;
 
 	/** How long the weapon damage trace debug geometry should remain visible. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug", meta = (ClampMin = 0, ClampMax = 10, Units = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Trace|Debug",
+		meta = (ClampMin = 0, ClampMax = 10, Units = "s"))
 	float WeaponDamageTraceDebugDuration = 1.0f;
 
 	/** Amount of damage a melee attack will deal */
@@ -141,11 +151,13 @@ protected:
 	float MeleeDamage = 1.0f;
 
 	/** Amount of knockback impulse a melee attack will apply */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Damage", meta = (ClampMin = 0, ClampMax = 1000, Units = "cm/s"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Damage",
+		meta = (ClampMin = 0, ClampMax = 1000, Units = "cm/s"))
 	float MeleeKnockbackImpulse = 250.0f;
 
 	/** Amount of upwards impulse a melee attack will apply */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Damage", meta = (ClampMin = 0, ClampMax = 1000, Units = "cm/s"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Damage",
+		meta = (ClampMin = 0, ClampMax = 1000, Units = "cm/s"))
 	float MeleeLaunchImpulse = 300.0f;
 
 	/** AnimMontage that will play for combo attacks */
@@ -157,7 +169,8 @@ protected:
 	TArray<FName> ComboSectionNames;
 
 	/** Max amount of time that may elapse for a combo attack input to not be considered stale */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Combo", meta = (ClampMin = 0, ClampMax = 5, Units = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Melee Attack|Combo",
+		meta = (ClampMin = 0, ClampMax = 5, Units = "s"))
 	float ComboInputCacheTimeTolerance = 0.45f;
 
 	/** AnimMontage that will play for charged attacks */

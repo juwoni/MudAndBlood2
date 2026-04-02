@@ -5,6 +5,7 @@
 #include "AMBCharacter.h"
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "CombatDamageable.h"
+#include "DrawDebugHelpers.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -15,10 +16,6 @@ UCombatAttackComponent::UCombatAttackComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 
 	OnAttackMontageEnded.BindUObject(this, &UCombatAttackComponent::AttackMontageEnded);
-}
-
-void UCombatAttackComponent::ApplyWeaponDamage()
-{
 }
 
 void UCombatAttackComponent::SetWeaponTrace(bool isTracing)
@@ -58,7 +55,25 @@ void UCombatAttackComponent::DoComboAttackEnd()
 	// Stub kept for parity with ACombatCharacter's original public API.
 }
 
-bool UCombatAttackComponent::AttackBoxTrace_Implementation()
+void UCombatAttackComponent::ApplyWeaponDamage(AActor* HitActor, const FVector& ImpactPoint)
+{
+	if (!GetWorld() || !IsValid(HitActor))
+	{
+		return;
+	}
+
+	DrawDebugString(
+		GetWorld(),
+		ImpactPoint,
+		TEXT("Hello"),
+		GetOwner(),
+		FColor::White,
+		2.0f, // 지속 시간
+		true
+	);
+}
+
+bool UCombatAttackComponent::AttackBoxTrace()
 {
 	AAMBCharacter* CharacterOwner = Cast<AAMBCharacter>(GetOwner());
 	if (!CharacterOwner)
@@ -72,22 +87,30 @@ bool UCombatAttackComponent::AttackBoxTrace_Implementation()
 		return false;
 	}
 
-	const FVector TraceStart = EquippedWeaponMesh->GetSocketLocation(TEXT("TopTrace"));
-	const FVector TraceEnd = EquippedWeaponMesh->GetSocketLocation(TEXT("BottomTrace"));
-	const FVector BoxExtent(4.0f, 4.0f, FVector::Distance(TraceStart, TraceEnd) * 0.5f);
-	const FRotator TraceRotation = UKismetMathLibrary::FindLookAtRotation(TraceStart, TraceEnd);
+	FVector localCurrentTopTrace = EquippedWeaponMesh->GetSocketLocation(TEXT("TopTrace"));
+	FVector localCurrentBottomTrace = EquippedWeaponMesh->GetSocketLocation(TEXT("BottomTrace"));
+
+	const FVector BoxExtent(FVector::Distance(localCurrentTopTrace, localCurrentBottomTrace) * 0.5f, 10.0f, 10.0f);
+
+	const FRotator TraceRotation =
+		UKismetMathLibrary::FindLookAtRotation(localCurrentTopTrace, localCurrentBottomTrace);
+
 
 	TArray<FHitResult> OutHits;
 
-	const bool bHit = UKismetSystemLibrary::BoxTraceMultiForObjects(
+	const bool bHit = UKismetSystemLibrary::BoxTraceMulti(
 		this,
-		TraceStart,
-		TraceEnd,
+		PreTopSocket,
+		localCurrentTopTrace,
 		BoxExtent,
 		TraceRotation,
-		{
-			UEngineTypes::ConvertToObjectType(ECC_Visibility)
-		},
+		UEngineTypes::ConvertToTraceType(ECC_Visibility),
+		// {
+		// 	UEngineTypes::ConvertToObjectType(ECC_Visibility),
+		// 	UEngineTypes::ConvertToObjectType(ECC_Pawn),
+		// 	
+		// 	
+		// },
 		false,
 		{
 			CharacterOwner
@@ -99,6 +122,14 @@ bool UCombatAttackComponent::AttackBoxTrace_Implementation()
 		FLinearColor::Red,
 		FLinearColor::Green,
 		WeaponDamageTraceDebugDuration);
+
+	PreTopSocket = localCurrentTopTrace;
+	PreBottomSocket = localCurrentBottomTrace;
+
+	if (OutHits.Num() >= 0)
+	{
+	}
+
 
 	return bHit;
 }

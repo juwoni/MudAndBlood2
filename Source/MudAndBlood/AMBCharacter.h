@@ -34,6 +34,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAMBInventoryComponent> InventoryComponent;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UCombatAttackComponent> CombatAttackComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> EquippedItemMeshComponent;
 
@@ -60,6 +63,8 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category ="Input")
 	TObjectPtr<UInputAction> ChargedAttackAction;
+
+	virtual void PostInitializeComponents() override;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -155,7 +160,7 @@ public:
 	float GetCurrentWeaponDamage() const;
 
 	UFUNCTION(BlueprintCallable, Category="Combat|Damage")
-	bool ApplyCurrentWeaponDamageToTarget(AActor* TargetActor, FVector DamageLocation, FVector DamageImpulse);
+	bool ApplyCurrentWeaponDamageToTarget(AActor* TargetActor);
 
 	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;

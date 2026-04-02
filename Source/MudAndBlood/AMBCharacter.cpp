@@ -31,6 +31,14 @@ AAMBCharacter::AAMBCharacter()
 	EquippedItemMeshComponent->SetHiddenInGame(true);
 }
 
+void AAMBCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	CombatAttackComponent = FindComponentByClass<UCombatAttackComponent>();
+	ensureMsgf(CombatAttackComponent, TEXT("%s is missing UCombatAttackComponent."), *GetNameSafe(this));
+}
+
 // Called when the game starts or when spawned
 void AAMBCharacter::BeginPlay()
 {
@@ -71,9 +79,12 @@ void AAMBCharacter::ProcessAttack()
 {
 	UCombatAttackComponent* combatComponent = GetCombatAttackComponent();
 	UAMBInventoryComponent* inventoryComponent = GetInventoryComponent();
+	if (!combatComponent || !inventoryComponent)
+	{
+		return;
+	}
 
-	if (!combatComponent || !inventoryComponent ||
-		!combatComponent->bWeaponTrace)
+	if (!combatComponent->bWeaponTrace)
 	{
 		return;
 	}
@@ -84,6 +95,9 @@ void AAMBCharacter::ProcessAttack()
 		return;
 	}
 
+	AActor* hitActor = nullptr;
+	bool isHit = false;
+
 	switch (selectedItem->CombatStyleType)
 	{
 	case EAMBCombatStyleType::Unarmed:
@@ -91,21 +105,26 @@ void AAMBCharacter::ProcessAttack()
 			FHitResult HitResult;
 			if (combatComponent->AttackSphereTrace("hand_r", "None", HitResult))
 			{
-				combatComponent->ApplyWeaponDamage();
+				combatComponent->ApplyWeaponDamage(HitResult.GetActor(), HitResult.ImpactPoint);
 			}
 			combatComponent->bWeaponTrace = false;
 			break;
 		}
 	case EAMBCombatStyleType::Sword:
-		if (combatComponent->AttackBoxTrace())
+		isHit = combatComponent->AttackBoxTrace();
+		if (isHit)
 		{
-			
 		}
 		break;
 	case EAMBCombatStyleType::Bow:
 		break;
 	default:
 		break;
+	}
+
+	if (isHit)
+	{
+		ApplyCurrentWeaponDamageToTarget(hitActor);
 	}
 }
 
@@ -331,11 +350,8 @@ float AAMBCharacter::GetCurrentWeaponDamage() const
 	return FMath::Max(0.0f, BaseDamage * AttackPower);
 }
 
-bool AAMBCharacter::ApplyCurrentWeaponDamageToTarget(AActor* TargetActor, FVector DamageLocation, FVector DamageImpulse)
+bool AAMBCharacter::ApplyCurrentWeaponDamageToTarget(AActor* TargetActor)
 {
-	static_cast<void>(DamageLocation);
-	static_cast<void>(DamageImpulse);
-
 	if (!TargetActor || TargetActor == this)
 	{
 		return false;
@@ -609,27 +625,5 @@ void AAMBCharacter::CheckChargedAttack()
 
 UCombatAttackComponent* AAMBCharacter::GetCombatAttackComponent() const
 {
-	TArray<UCombatAttackComponent*> CombatAttackComponents;
-	GetComponents(CombatAttackComponents);
-
-	UCombatAttackComponent* PreferredComponent = nullptr;
-	for (UCombatAttackComponent* Component : CombatAttackComponents)
-	{
-		if (!IsValid(Component))
-		{
-			continue;
-		}
-
-		if (!PreferredComponent)
-		{
-			PreferredComponent = Component;
-		}
-
-		if (Component->GetClass() != UCombatAttackComponent::StaticClass())
-		{
-			return Component;
-		}
-	}
-
-	return PreferredComponent;
+	return CombatAttackComponent;
 }

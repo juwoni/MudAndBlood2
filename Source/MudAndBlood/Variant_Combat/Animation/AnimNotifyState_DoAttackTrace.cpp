@@ -10,6 +10,7 @@
 void UAnimNotifyState_DoAttackTrace::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                                                  float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
+	
 	if (AAMBCharacter* Owner = Cast<AAMBCharacter>(MeshComp ? MeshComp->GetOwner() : nullptr))
 	{
 		if (UCombatAttackComponent* CombatComponent = Owner->GetCombatAttackComponent())
