@@ -40,6 +40,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
 	TObjectPtr<UAMBCombatStyleData> CombatStyle;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
+	TObjectPtr<UAMBCombatStyleData> UnarmedCombatStyle;
+
 	/** Max amount of HP the character will have on respawn */
 	UPROPERTY(EditAnywhere, Category="Damage")
 	float MaxHP = 3.0f;
@@ -184,6 +187,7 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category="Combat")
 	void ReceivedDamage(float Damage, const FVector& ImpactPoint, const FVector& DamageDirection);
 
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
 
@@ -195,4 +199,5 @@ protected:
 	void HandleComboAbilityStateChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	void HandleChargedAbilityStateChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	void NotifyAttackCompleted();
+	UAMBCombatStyleData* ResolveInitialCombatStyle() const;
 };

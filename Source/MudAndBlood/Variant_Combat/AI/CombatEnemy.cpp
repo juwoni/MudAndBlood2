@@ -288,6 +288,13 @@ void ACombatEnemy::Landed(const FHitResult& Hit)
 	OnEnemyLanded.ExecuteIfBound();
 }
 
+void ACombatEnemy::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	CurrentCombatStyle = ResolveInitialCombatStyle();
+}
+
 void ACombatEnemy::BeginPlay()
 {
 	if (CombatAttributeSet)
@@ -304,9 +311,10 @@ void ACombatEnemy::BeginPlay()
 	CurrentHP = GetHealth();
 	LifeBarWidget->SetLifePercentage(GetMaxHealth() > 0.0f ? GetHealth() / GetMaxHealth() : 0.0f);
 
-	if (CombatStyle)
+	UAMBCombatStyleData* InitialCombatStyle = ResolveInitialCombatStyle();
+	if (InitialCombatStyle)
 	{
-		SetCombatStyle(CombatStyle);
+		SetCombatStyle(InitialCombatStyle);
 	}
 }
 
@@ -472,6 +480,11 @@ void ACombatEnemy::NotifyAttackCompleted()
 {
 	bIsAttacking = false;
 	OnAttackCompleted.ExecuteIfBound();
+}
+
+UAMBCombatStyleData* ACombatEnemy::ResolveInitialCombatStyle() const
+{
+	return CombatStyle ? CombatStyle.Get() : UnarmedCombatStyle.Get();
 }
 
 void ACombatEnemy::HandleHealthChanged(float OldHealth, float NewHealth, AActor* InstigatorActor)
