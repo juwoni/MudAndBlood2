@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimMontage.h"
+#include "GameplayAbilitySpec.h"
+#include "GameplayTagContainer.h"
 #include "Characters/AMBGASCharacterBase.h"
 #include "Engine/TimerHandle.h"
 #include "CombatEnemy.generated.h"
@@ -11,21 +13,13 @@
 class UWidgetComponent;
 class UCombatLifeBar;
 class UAnimMontage;
+class UAMBCombatStyleData;
 class UCombatAttackComponent;
 
-/** Completed attack animation delegate for StateTree */
 DECLARE_DELEGATE(FOnEnemyAttackCompleted);
-
-/** Landed delegate for StateTree */
 DECLARE_DELEGATE(FOnEnemyLanded);
-
-/** Enemy died delegate */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEnemyDied);
 
-/**
- *  An AI-controlled character with combat capabilities.
- *  Its bundled AI Controller runs logic through StateTree
- */
 UCLASS(abstract)
 class MUDANDBLOOD_API ACombatEnemy : public AAMBGASCharacterBase
 {
@@ -40,24 +34,22 @@ class MUDANDBLOOD_API ACombatEnemy : public AAMBGASCharacterBase
 	UCombatAttackComponent* CombatAttackComponent;
 
 public:
-	
-	/** Constructor */
 	ACombatEnemy();
 
 protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
+	TObjectPtr<UAMBCombatStyleData> CombatStyle;
 
 	/** Max amount of HP the character will have on respawn */
 	UPROPERTY(EditAnywhere, Category="Damage")
 	float MaxHP = 3.0f;
 
 public:
-
-	/** Current amount of HP the character has */
+	/** Mirror of current GAS health for BP/UI compatibility */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Damage", meta = (ClampMin = 0, ClampMax = 100))
 	float CurrentHP = 0.0f;
 
 protected:
-
 	/** Name of the pelvis bone, for damage ragdoll physics */
 	UPROPERTY(EditAnywhere, Category="Damage")
 	FName PelvisBoneName;
@@ -72,7 +64,6 @@ protected:
 	/** Distance ahead of the character that melee attack sphere collision traces will extend */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 500, Units = "cm"))
 	float MeleeTraceDistance = 75.0f;
-	// float MeleeTraceDistance = 30.0f;
 
 	/** Radius of the sphere trace for melee attacks */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Trace", meta = (ClampMin = 0, ClampMax = 500, Units = "cm"))
@@ -84,19 +75,17 @@ protected:
 
 	/** Amount of knockback impulse a melee attack will apply */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Damage", meta = (ClampMin = 0, ClampMax = 1000, Units = "cm/s"))
-	// float MeleeKnockbackImpulse = 100.0f;
 	float MeleeKnockbackImpulse = 100.0f;
 
 	/** Amount of upwards impulse a melee attack will apply */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Damage", meta = (ClampMin = 0, ClampMax = 1000, Units = "cm/s"))
-	// float MeleeLaunchImpulse = 350.0f;
 	float MeleeLaunchImpulse = 35.0f;
 
-	/** AnimMontage that will play for combo attacks */
+	/** Legacy fallback AnimMontage for combo attacks */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Combo")
-	UAnimMontage* ComboAttackMontage;
+	UAnimMontage* ComboAttackMontage = nullptr;
 
-	/** Names of the AnimMontage sections that correspond to each stage of the combo attack */
+	/** Legacy fallback section names for combo attacks */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Combo")
 	TArray<FName> ComboSectionNames;
 
@@ -106,15 +95,15 @@ protected:
 	/** Index of the current stage of the melee attack combo */
 	int32 CurrentComboAttack = 0;
 
-	/** AnimMontage that will play for charged attacks */
+	/** Legacy fallback AnimMontage for charged attacks */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Charged")
-	UAnimMontage* ChargedAttackMontage;
+	UAnimMontage* ChargedAttackMontage = nullptr;
 
-	/** Name of the AnimMontage section that corresponds to the charge loop */
+	/** Legacy fallback loop section name */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Charged")
 	FName ChargeLoopSection;
 
-	/** Name of the AnimMontage section that corresponds to the attack */
+	/** Legacy fallback attack section name */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Charged")
 	FName ChargeAttackSection;
 
@@ -129,7 +118,7 @@ protected:
 	/** Target number of charge animation loops to play in this charged attack */
 	int32 TargetChargeLoops = 0;
 
-	/** Number of charge animation loop currently playing */
+	/** Number of charge animation loops currently played */
 	int32 CurrentChargeLoop = 0;
 
 	/** Time to wait before removing this character from the level after it dies */
@@ -139,92 +128,71 @@ protected:
 	/** Enemy death timer */
 	FTimerHandle DeathTimer;
 
-	/** Attack montage ended delegate */
-	FOnMontageEnded OnAttackMontageEnded;
-
 	/** Last recorded location we're being attacked from */
 	FVector LastDangerLocation = FVector::ZeroVector;
 
 	/** Last recorded game time we were attacked */
 	float LastDangerTime = -1000.0f;
 
-public:
-	/** Attack completed internal delegate to notify StateTree tasks */
-	FOnEnemyAttackCompleted OnAttackCompleted;
+	UPROPERTY(Transient)
+	TObjectPtr<UAMBCombatStyleData> CurrentCombatStyle;
 
-	/** Landed internal delegate to notify StateTree tasks. We use this instead of the built-in Landed delegate so we can bind to a Lambda in StateTree tasks */
+	FGameplayTag CurrentCombatStyleTag;
+	TArray<FGameplayAbilitySpecHandle> GrantedCombatAbilityHandles;
+	FDelegateHandle ComboStateTagChangedHandle;
+	FDelegateHandle ChargedStateTagChangedHandle;
+
+public:
+	FOnEnemyAttackCompleted OnAttackCompleted;
 	FOnEnemyLanded OnEnemyLanded;
 
-	/** Enemy died delegate. Allows external subscribers to respond to enemy death */
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnEnemyDied OnEnemyDied;
 
 public:
-
-	/** Performs an AI-initiated combo attack. Number of hits will be decided by this character */
 	void DoAIComboAttack();
-
-	/** Performs an AI-initiated charged attack. Charge time will be decided by this character */
 	void DoAIChargedAttack();
 
-	/** Called from a delegate when the attack montage ends */
-	void AttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-
-	/** Returns the last recorded location we were attacked from */
 	const FVector& GetLastDangerLocation() const;
-
-	/** Returns the last game time we were attacked */
 	float GetLastDangerTime() const;
 
 	virtual UCombatAttackComponent* GetCombatAttackComponent() const override { return CombatAttackComponent; }
+	virtual UAMBCombatStyleData* GetCurrentCombatStyle() const override { return CurrentCombatStyle; }
 
-public:
-
-	/** Performs a combo attack's check to continue the string */
 	UFUNCTION(BlueprintCallable, Category="Attacker")
 	virtual void CheckCombo() override;
 
-	/** Performs a charged attack's check to loop the charge animation */
 	UFUNCTION(BlueprintCallable, Category="Attacker")
 	virtual void CheckChargedAttack() override;
 
-	/** Handles damage and knockback events */
 	virtual void ApplyDamage(float Damage, AActor* DamageCauser, const FVector& DamageLocation, const FVector& DamageImpulse) override;
-
-	/** Handles death events */
 	virtual void HandleDeath() override;
-
-	/** Handles healing events */
 	virtual void ApplyHealing(float Healing, AActor* Healer) override;
-
-	/** Allows the enemy to react to incoming attacks */
 	virtual void NotifyDanger(const FVector& DangerLocation, AActor* DangerSource) override;
 
 protected:
 	virtual void PrepareAttackTrace() override;
+	virtual void HandleHealthChanged(float OldHealth, float NewHealth, AActor* InstigatorActor) override;
 
-	/** Removes this character from the level after it dies */
 	void RemoveFromLevel();
 
 public:
-
-	/** Overrides the default TakeDamage functionality */
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-
-	/** Overrides landing to reset damage ragdoll physics */
 	virtual void Landed(const FHitResult& Hit) override;
 
 protected:
-
-	/** Blueprint handler to play damage received effects */
 	UFUNCTION(BlueprintImplementableEvent, Category="Combat")
 	void ReceivedDamage(float Damage, const FVector& ImpactPoint, const FVector& DamageDirection);
 
-protected:
-
-	/** Gameplay initialization */
 	virtual void BeginPlay() override;
-
-	/** EndPlay cleanup */
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
+
+	void ClearGrantedCombatAbilities();
+	void GrantCombatStyleAbilities(const UAMBCombatStyleData* CombatStyleData);
+	void UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag);
+	bool TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const;
+	void SetCombatStyle(UAMBCombatStyleData* NewCombatStyle);
+	void HandleComboAbilityStateChanged(const FGameplayTag CallbackTag, int32 NewCount);
+	void HandleChargedAbilityStateChanged(const FGameplayTag CallbackTag, int32 NewCount);
+	void NotifyAttackCompleted();
 };

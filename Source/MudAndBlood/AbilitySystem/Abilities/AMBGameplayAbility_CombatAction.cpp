@@ -1,6 +1,6 @@
 #include "AbilitySystem/Abilities/AMBGameplayAbility_CombatAction.h"
 
-#include "AMBCharacter.h"
+#include "Characters/AMBGASCharacterBase.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"
 
 UAMBGameplayAbility_CombatAction::UAMBGameplayAbility_CombatAction()
@@ -8,14 +8,14 @@ UAMBGameplayAbility_CombatAction::UAMBGameplayAbility_CombatAction()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 }
 
-AAMBCharacter* UAMBGameplayAbility_CombatAction::GetCombatCharacterFromActorInfo() const
+AAMBGASCharacterBase* UAMBGameplayAbility_CombatAction::GetCombatCharacterFromActorInfo() const
 {
-	return CurrentActorInfo ? Cast<AAMBCharacter>(CurrentActorInfo->AvatarActor.Get()) : nullptr;
+	return CurrentActorInfo ? Cast<AAMBGASCharacterBase>(CurrentActorInfo->AvatarActor.Get()) : nullptr;
 }
 
 UCombatAttackComponent* UAMBGameplayAbility_CombatAction::GetCombatAttackComponentFromActorInfo() const
 {
-	if (AAMBCharacter* Character = GetCombatCharacterFromActorInfo())
+	if (AAMBGASCharacterBase* Character = GetCombatCharacterFromActorInfo())
 	{
 		return Character->GetCombatAttackComponent();
 	}

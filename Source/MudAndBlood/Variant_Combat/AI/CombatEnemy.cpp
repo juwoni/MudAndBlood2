@@ -1,122 +1,125 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-
 #include "CombatEnemy.h"
-#include "Components/CapsuleComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
+
+#include "AbilitySystem/AMBAbilitySystemComponent.h"
+#include "AbilitySystem/AMBGameplayTags.h"
+#include "AbilitySystem/Attributes/AMBCombatAttributeSet.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "CombatAIController.h"
-#include "Components/WidgetComponent.h"
-#include "Engine/DamageEvents.h"
 #include "CombatLifeBar.h"
-#include "TimerManager.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Animation/AnimInstance.h"
+#include "Components/WidgetComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "TimerManager.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"
+#include "Variant_Combat/Data/AMBCombatStyleData.h"
 
 ACombatEnemy::ACombatEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// bind the attack montage ended delegate
-	OnAttackMontageEnded.BindUObject(this, &ACombatEnemy::AttackMontageEnded);
-
-	// set the AI Controller class by default
 	AIControllerClass = ACombatAIController::StaticClass();
-
-	// use an AI Controller regardless of whether we're placed or spawned
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-
-	// ignore the controller's yaw rotation
 	bUseControllerRotationYaw = false;
 
-	// create the life bar
 	LifeBar = CreateDefaultSubobject<UWidgetComponent>(TEXT("LifeBar"));
 	LifeBar->SetupAttachment(RootComponent);
 
-	// create the attack component
 	CombatAttackComponent = CreateDefaultSubobject<UCombatAttackComponent>(TEXT("CombatAttackComponent"));
 
-	// set the collision capsule size
 	GetCapsuleComponent()->SetCapsuleSize(35.0f, 90.0f);
-
-	// set the character movement properties
 	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 
-	// reset HP to maximum
 	CurrentHP = MaxHP;
 }
 
 void ACombatEnemy::DoAIComboAttack()
 {
-	// ignore if we're already playing an attack animation
-	if (bIsAttacking)
+	if (bIsAttacking || !CurrentCombatStyle)
 	{
 		return;
 	}
 
-	// raise the attacking flag
-	bIsAttacking = true;
-
-	// choose how many times we're going to attack
-	TargetComboCount = FMath::RandRange(1, ComboSectionNames.Num() - 1);
-
-	// reset the attack counter
-	CurrentComboAttack = 0;
-
-	// play the attack montage
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	const int32 ComboSectionCount = CurrentCombatStyle->ComboSectionNames.Num();
+	if (ComboSectionCount <= 0 || !CurrentCombatStyle->ComboAttackMontage)
 	{
-		const float MontageLength = AnimInstance->Montage_Play(ComboAttackMontage, 1.0f,
-		                                                       EMontagePlayReturnType::MontageLength, 0.0f, true);
+		return;
+	}
 
-		// subscribe to montage completed and interrupted events
-		if (MontageLength > 0.0f)
+	bIsAttacking = true;
+	CurrentComboAttack = 0;
+	TargetComboCount = FMath::RandRange(1, ComboSectionCount);
+
+	if (AbilitySystemComponent)
+	{
+		if (ComboStateTagChangedHandle.IsValid())
 		{
-			// set the end delegate for the montage
-			AnimInstance->Montage_SetEndDelegate(OnAttackMontageEnded, ComboAttackMontage);
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Combo_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ComboStateTagChangedHandle);
+			ComboStateTagChangedHandle.Reset();
 		}
+
+		ComboStateTagChangedHandle = AbilitySystemComponent->RegisterGameplayTagEvent(
+			TAG_State_Attack_Combo_Active,
+			EGameplayTagEventType::NewOrRemoved).AddUObject(this, &ACombatEnemy::HandleComboAbilityStateChanged);
+	}
+
+	if (!TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light))
+	{
+		if (AbilitySystemComponent && ComboStateTagChangedHandle.IsValid())
+		{
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Combo_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ComboStateTagChangedHandle);
+			ComboStateTagChangedHandle.Reset();
+		}
+
+		NotifyAttackCompleted();
 	}
 }
 
 void ACombatEnemy::DoAIChargedAttack()
 {
-	// ignore if we're already playing an attack animation
-	if (bIsAttacking)
+	if (bIsAttacking || !CurrentCombatStyle)
 	{
 		return;
 	}
 
-	// raise the attacking flag
-	bIsAttacking = true;
+	if (!CurrentCombatStyle->ChargedAttackMontage)
+	{
+		return;
+	}
 
-	// choose how many loops are we going to charge for
+	bIsAttacking = true;
+	CurrentChargeLoop = 0;
 	TargetChargeLoops = FMath::RandRange(MinChargeLoops, MaxChargeLoops);
 
-	// reset the charge loop counter
-	CurrentChargeLoop = 0;
-
-	// play the attack montage
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	if (AbilitySystemComponent)
 	{
-		const float MontageLength = AnimInstance->Montage_Play(ChargedAttackMontage, 1.0f,
-		                                                       EMontagePlayReturnType::MontageLength, 0.0f, true);
-
-		// subscribe to montage completed and interrupted events
-		if (MontageLength > 0.0f)
+		if (ChargedStateTagChangedHandle.IsValid())
 		{
-			// set the end delegate for the montage
-			AnimInstance->Montage_SetEndDelegate(OnAttackMontageEnded, ChargedAttackMontage);
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Charged_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ChargedStateTagChangedHandle);
+			ChargedStateTagChangedHandle.Reset();
 		}
+
+		ChargedStateTagChangedHandle = AbilitySystemComponent->RegisterGameplayTagEvent(
+			TAG_State_Attack_Charged_Active,
+			EGameplayTagEventType::NewOrRemoved).AddUObject(this, &ACombatEnemy::HandleChargedAbilityStateChanged);
 	}
-}
 
-void ACombatEnemy::AttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	// reset the attacking flag
-	bIsAttacking = false;
+	if (!TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Heavy_Start))
+	{
+		if (AbilitySystemComponent && ChargedStateTagChangedHandle.IsValid())
+		{
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Charged_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ChargedStateTagChangedHandle);
+			ChargedStateTagChangedHandle.Reset();
+		}
 
-	// call the attack completed delegate so the StateTree can continue execution
-	OnAttackCompleted.ExecuteIfBound();
+		NotifyAttackCompleted();
+	}
 }
 
 const FVector& ACombatEnemy::GetLastDangerLocation() const
@@ -136,6 +139,12 @@ void ACombatEnemy::PrepareAttackTrace()
 		return;
 	}
 
+	if (CurrentCombatStyle)
+	{
+		CombatAttackComponent->ApplyCombatStyleData(CurrentCombatStyle);
+		return;
+	}
+
 	CombatAttackComponent->SetMeleeTraceSettings(
 		MeleeTraceDistance,
 		MeleeTraceRadius,
@@ -146,97 +155,103 @@ void ACombatEnemy::PrepareAttackTrace()
 
 void ACombatEnemy::CheckCombo()
 {
-	// increase the combo counter
 	++CurrentComboAttack;
 
-	// do we still have attacks to play in this string?
 	if (CurrentComboAttack < TargetComboCount)
 	{
-		// jump to the next attack section
-		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-		{
-			AnimInstance->Montage_JumpToSection(ComboSectionNames[CurrentComboAttack], ComboAttackMontage);
-		}
+		FGameplayEventData ComboInputPayload;
+		ComboInputPayload.EventTag = TAG_Event_Attack_Combo_Input;
+		ComboInputPayload.Instigator = this;
+		ComboInputPayload.Target = this;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Input, ComboInputPayload);
 	}
+
+	FGameplayEventData CheckPayload;
+	CheckPayload.EventTag = TAG_Event_Attack_Combo_Check;
+	CheckPayload.Instigator = this;
+	CheckPayload.Target = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Check, CheckPayload);
 }
 
 void ACombatEnemy::CheckChargedAttack()
 {
-	// increase the charge loop counter
 	++CurrentChargeLoop;
 
-	// jump to either the loop or attack section of the montage depending on whether we hit the loop target
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	if (CurrentChargeLoop >= TargetChargeLoops)
 	{
-		AnimInstance->Montage_JumpToSection(
-			CurrentChargeLoop >= TargetChargeLoops ? ChargeAttackSection : ChargeLoopSection, ChargedAttackMontage);
+		FGameplayEventData ReleasePayload;
+		ReleasePayload.EventTag = TAG_Event_Attack_Charged_Release;
+		ReleasePayload.Instigator = this;
+		ReleasePayload.Target = this;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Charged_Release, ReleasePayload);
 	}
+
+	FGameplayEventData CheckPayload;
+	CheckPayload.EventTag = TAG_Event_Attack_Charged_Check;
+	CheckPayload.Instigator = this;
+	CheckPayload.Target = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Charged_Check, CheckPayload);
 }
 
 void ACombatEnemy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector& DamageLocation,
                                const FVector& DamageImpulse)
 {
-	// pass the damage event to the actor
-	FDamageEvent DamageEvent;
-	const float ActualDamage = TakeDamage(Damage, DamageEvent, nullptr, DamageCauser);
+	const float OldHealth = GetHealth();
+	Super::ApplyDamage(Damage, DamageCauser, DamageLocation, DamageImpulse);
 
-	// only process knockback and effects if we received nonzero damage
-	if (ActualDamage > 0.0f)
+	if (GetHealth() >= OldHealth)
 	{
-		// apply the knockback impulse
-		GetCharacterMovement()->AddImpulse(DamageImpulse, true);
+		return;
+	}
 
-		// is the character ragdolling?
-		if (GetMesh()->IsSimulatingPhysics())
+	if (GetMesh()->IsSimulatingPhysics())
+	{
+		GetMesh()->AddImpulseAtLocation(DamageImpulse * GetMesh()->GetMass(), DamageLocation);
+	}
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		if (CurrentCombatStyle)
 		{
-			// apply an impulse to the ragdoll
-			GetMesh()->AddImpulseAtLocation(DamageImpulse * GetMesh()->GetMass(), DamageLocation);
+			AnimInstance->Montage_Stop(0.1f, CurrentCombatStyle->ComboAttackMontage);
+			AnimInstance->Montage_Stop(0.1f, CurrentCombatStyle->ChargedAttackMontage);
 		}
-
-		// stop the attack montages to interrupt the attack
-		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		else
 		{
 			AnimInstance->Montage_Stop(0.1f, ComboAttackMontage);
 			AnimInstance->Montage_Stop(0.1f, ChargedAttackMontage);
 		}
-
-		// pass control to BP to play effects, etc.
-		ReceivedDamage(ActualDamage, DamageLocation, DamageImpulse.GetSafeNormal());
 	}
+
+	ReceivedDamage(OldHealth - GetHealth(), DamageLocation, DamageImpulse.GetSafeNormal());
 }
 
 void ACombatEnemy::HandleDeath()
 {
-	// hide the life bar
-	LifeBar->SetHiddenInGame(true);
+	Super::HandleDeath();
 
-	// disable the collision capsule to avoid being hit again while dead
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (LifeBar)
+	{
+		LifeBar->SetHiddenInGame(true);
+	}
 
-	// disable character movement
-	GetCharacterMovement()->DisableMovement();
-
-	// enable full ragdoll physics
-	GetMesh()->SetSimulatePhysics(true);
-
-	// call the died delegate to notify any subscribers
 	OnEnemyDied.Broadcast();
 
-	// set up the death timer
-	GetWorld()->GetTimerManager().SetTimer(DeathTimer, this, &ACombatEnemy::RemoveFromLevel, DeathRemovalTime);
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(DeathTimer, this, &ACombatEnemy::RemoveFromLevel, DeathRemovalTime);
+	}
 }
 
 void ACombatEnemy::ApplyHealing(float Healing, AActor* Healer)
 {
-	// stub
+	Super::ApplyHealing(Healing, Healer);
 }
 
 void ACombatEnemy::NotifyDanger(const FVector& DangerLocation, AActor* DangerSource)
 {
-	// ensure we're being attacked by the player
 	if (DangerSource && DangerSource->ActorHasTag(FName("Player")))
 	{
-		// save the danger location and game time
 		LastDangerLocation = DangerLocation;
 		LastDangerTime = GetWorld()->GetTimeSeconds();
 	}
@@ -244,77 +259,235 @@ void ACombatEnemy::NotifyDanger(const FVector& DangerLocation, AActor* DangerSou
 
 void ACombatEnemy::RemoveFromLevel()
 {
-	// destroy this actor
 	Destroy();
 }
 
 float ACombatEnemy::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator,
                                AActor* DamageCauser)
 {
-	// only process damage if the character is still alive
-	if (CurrentHP <= 0.0f)
+	static_cast<void>(DamageEvent);
+	static_cast<void>(EventInstigator);
+
+	if (IsDead())
 	{
 		return 0.0f;
 	}
 
-	// reduce the current HP
-	CurrentHP -= Damage;
-
-	// have we run out of HP?
-	if (CurrentHP <= 0.0f)
-	{
-		// die
-		HandleDeath();
-	}
-	else
-	{
-		// update the life bar
-		LifeBarWidget->SetLifePercentage(CurrentHP / MaxHP);
-
-		// enable partial ragdoll physics, but keep the pelvis vertical
-		GetMesh()->SetPhysicsBlendWeight(0.5f);
-		GetMesh()->SetBodySimulatePhysics(PelvisBoneName, false);
-	}
-
-	// return the received damage amount
-	return Damage;
+	return ApplyDamageToSelf(Damage, DamageCauser, DamageCauser) ? FMath::Abs(Damage) : 0.0f;
 }
 
 void ACombatEnemy::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
 
-	// is the character still alive?
-	if (CurrentHP >= 0.0f)
+	if (!IsDead())
 	{
-		// disable ragdoll physics
 		GetMesh()->SetPhysicsBlendWeight(0.0f);
 	}
 
-	// call the landed Delegate for StateTree
 	OnEnemyLanded.ExecuteIfBound();
 }
 
 void ACombatEnemy::BeginPlay()
 {
-	// reset HP to maximum
-	CurrentHP = MaxHP;
+	if (CombatAttributeSet)
+	{
+		CombatAttributeSet->SetMaxHealth(MaxHP);
+		CombatAttributeSet->SetHealth(MaxHP);
+	}
 
-	// we top the HP before BeginPlay so StateTree picks it up at the right value
 	Super::BeginPlay();
 
-	// get the life bar widget from the widget comp
 	LifeBarWidget = Cast<UCombatLifeBar>(LifeBar->GetUserWidgetObject());
 	check(LifeBarWidget);
 
-	// fill the life bar
-	LifeBarWidget->SetLifePercentage(1.0f);
+	CurrentHP = GetHealth();
+	LifeBarWidget->SetLifePercentage(GetMaxHealth() > 0.0f ? GetHealth() / GetMaxHealth() : 0.0f);
+
+	if (CombatStyle)
+	{
+		SetCombatStyle(CombatStyle);
+	}
 }
 
 void ACombatEnemy::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
+	if (AbilitySystemComponent)
+	{
+		if (ComboStateTagChangedHandle.IsValid())
+		{
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Combo_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ComboStateTagChangedHandle);
+			ComboStateTagChangedHandle.Reset();
+		}
+
+		if (ChargedStateTagChangedHandle.IsValid())
+		{
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Charged_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ChargedStateTagChangedHandle);
+			ChargedStateTagChangedHandle.Reset();
+		}
+	}
+
 	Super::EndPlay(EndPlayReason);
 
-	// clear the death timer
-	GetWorld()->GetTimerManager().ClearTimer(DeathTimer);
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DeathTimer);
+	}
+}
+
+void ACombatEnemy::ClearGrantedCombatAbilities()
+{
+	if (!AbilitySystemComponent || !HasAuthority())
+	{
+		GrantedCombatAbilityHandles.Reset();
+		return;
+	}
+
+	for (const FGameplayAbilitySpecHandle& AbilityHandle : GrantedCombatAbilityHandles)
+	{
+		AbilitySystemComponent->ClearAbility(AbilityHandle);
+	}
+
+	GrantedCombatAbilityHandles.Reset();
+}
+
+void ACombatEnemy::GrantCombatStyleAbilities(const UAMBCombatStyleData* CombatStyleData)
+{
+	if (!AbilitySystemComponent || !CombatStyleData || !HasAuthority())
+	{
+		return;
+	}
+
+	for (const FAMBCombatAbilityGrant& AbilityGrant : CombatStyleData->GrantedAbilities)
+	{
+		if (!AbilityGrant.AbilityClass)
+		{
+			continue;
+		}
+
+		FGameplayAbilitySpec AbilitySpec(AbilityGrant.AbilityClass, AbilityGrant.AbilityLevel);
+		GrantedCombatAbilityHandles.Add(AbilitySystemComponent->GiveAbility(AbilitySpec));
+	}
+}
+
+void ACombatEnemy::UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag)
+{
+	if (!AbilitySystemComponent)
+	{
+		CurrentCombatStyleTag = NewCombatStyleTag;
+		return;
+	}
+
+	if (CurrentCombatStyleTag.IsValid())
+	{
+		AbilitySystemComponent->RemoveLooseGameplayTag(CurrentCombatStyleTag);
+	}
+
+	CurrentCombatStyleTag = NewCombatStyleTag;
+
+	if (CurrentCombatStyleTag.IsValid())
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(CurrentCombatStyleTag);
+	}
+}
+
+bool ACombatEnemy::TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const
+{
+	if (!AbilitySystemComponent)
+	{
+		return false;
+	}
+
+	return AbilitySystemComponent->TryActivateAbilitiesByInputTag(InputTag);
+}
+
+void ACombatEnemy::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
+{
+	if (CurrentCombatStyle == NewCombatStyle)
+	{
+		return;
+	}
+
+	ClearGrantedCombatAbilities();
+
+	CurrentCombatStyle = NewCombatStyle;
+	UpdateCombatStyleTag(CurrentCombatStyle ? CurrentCombatStyle->CombatStyleTag : FGameplayTag());
+
+	if (CombatAttackComponent && CurrentCombatStyle)
+	{
+		CombatAttackComponent->ApplyCombatStyleData(CurrentCombatStyle);
+
+		MeleeTraceDistance = CurrentCombatStyle->MeleeTraceDistance;
+		MeleeTraceRadius = CurrentCombatStyle->MeleeTraceRadius;
+		MeleeDamage = CurrentCombatStyle->MeleeDamage;
+		MeleeKnockbackImpulse = CurrentCombatStyle->MeleeKnockbackImpulse;
+		MeleeLaunchImpulse = CurrentCombatStyle->MeleeLaunchImpulse;
+		ComboAttackMontage = CurrentCombatStyle->ComboAttackMontage;
+		ComboSectionNames = CurrentCombatStyle->ComboSectionNames;
+		ChargedAttackMontage = CurrentCombatStyle->ChargedAttackMontage;
+		ChargeLoopSection = CurrentCombatStyle->ChargeLoopSection;
+		ChargeAttackSection = CurrentCombatStyle->ChargeAttackSection;
+	}
+
+	GrantCombatStyleAbilities(CurrentCombatStyle);
+}
+
+void ACombatEnemy::HandleComboAbilityStateChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	static_cast<void>(CallbackTag);
+
+	if (NewCount == 0 && bIsAttacking)
+	{
+		if (AbilitySystemComponent && ComboStateTagChangedHandle.IsValid())
+		{
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Combo_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ComboStateTagChangedHandle);
+			ComboStateTagChangedHandle.Reset();
+		}
+
+		NotifyAttackCompleted();
+	}
+}
+
+void ACombatEnemy::HandleChargedAbilityStateChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	static_cast<void>(CallbackTag);
+
+	if (NewCount == 0 && bIsAttacking)
+	{
+		if (AbilitySystemComponent && ChargedStateTagChangedHandle.IsValid())
+		{
+			AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Attack_Charged_Active, EGameplayTagEventType::NewOrRemoved)
+				.Remove(ChargedStateTagChangedHandle);
+			ChargedStateTagChangedHandle.Reset();
+		}
+
+		NotifyAttackCompleted();
+	}
+}
+
+void ACombatEnemy::NotifyAttackCompleted()
+{
+	bIsAttacking = false;
+	OnAttackCompleted.ExecuteIfBound();
+}
+
+void ACombatEnemy::HandleHealthChanged(float OldHealth, float NewHealth, AActor* InstigatorActor)
+{
+	Super::HandleHealthChanged(OldHealth, NewHealth, InstigatorActor);
+
+	CurrentHP = NewHealth;
+
+	if (LifeBarWidget)
+	{
+		LifeBarWidget->SetLifePercentage(GetMaxHealth() > 0.0f ? NewHealth / GetMaxHealth() : 0.0f);
+	}
+
+	if (NewHealth < OldHealth && NewHealth > 0.0f)
+	{
+		GetMesh()->SetPhysicsBlendWeight(0.5f);
+		GetMesh()->SetBodySimulatePhysics(PelvisBoneName, false);
+	}
 }

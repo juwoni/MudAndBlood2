@@ -3,8 +3,8 @@
 #include "AbilitySystem/AMBGameplayTags.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
-#include "AMBCharacter.h"
 #include "Animation/AnimInstance.h"
+#include "Characters/AMBGASCharacterBase.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Variant_Combat/Data/AMBCombatStyleData.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"
@@ -34,7 +34,7 @@ void UAMBGameplayAbility_ComboAttack::ActivateAbility(
 	CurrentComboIndex = 0;
 	ComboAttackPhase = EAMBComboAttackPhase::None;
 
-	AAMBCharacter* Character = GetCombatCharacterFromActorInfo();
+	AAMBGASCharacterBase* Character = GetCombatCharacterFromActorInfo();
 	UCombatAttackComponent* CombatAttackComponent = GetCombatAttackComponentFromActorInfo();
 	const UAMBCombatStyleData* CombatStyleData = Character ? Character->GetCurrentCombatStyle() : nullptr;
 	if (!Character ||
@@ -213,7 +213,7 @@ bool UAMBGameplayAbility_ComboAttack::TryAdvanceCombo(const UAMBCombatStyleData&
 		return false;
 	}
 
-	AAMBCharacter* Character = GetCombatCharacterFromActorInfo();
+	AAMBGASCharacterBase* Character = GetCombatCharacterFromActorInfo();
 	UAnimInstance* AnimInstance = Character && Character->GetMesh() ? Character->GetMesh()->GetAnimInstance() : nullptr;
 	if (!AnimInstance)
 	{
@@ -234,7 +234,7 @@ const UAMBCombatStyleData* UAMBGameplayAbility_ComboAttack::GetActiveCombatStyle
 		return nullptr;
 	}
 
-	const AAMBCharacter* Character = GetCombatCharacterFromActorInfo();
+	const AAMBGASCharacterBase* Character = GetCombatCharacterFromActorInfo();
 	return Character ? Character->GetCurrentCombatStyle() : nullptr;
 }
 

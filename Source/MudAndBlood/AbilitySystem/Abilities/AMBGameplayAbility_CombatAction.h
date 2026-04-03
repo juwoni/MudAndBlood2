@@ -4,7 +4,7 @@
 #include "AbilitySystem/Abilities/AMBGameplayAbility.h"
 #include "AMBGameplayAbility_CombatAction.generated.h"
 
-class AAMBCharacter;
+class AAMBGASCharacterBase;
 class UCombatAttackComponent;
 
 UCLASS(Abstract)
@@ -16,6 +16,6 @@ public:
 	UAMBGameplayAbility_CombatAction();
 
 protected:
-	AAMBCharacter* GetCombatCharacterFromActorInfo() const;
+	AAMBGASCharacterBase* GetCombatCharacterFromActorInfo() const;
 	UCombatAttackComponent* GetCombatAttackComponentFromActorInfo() const;
 };

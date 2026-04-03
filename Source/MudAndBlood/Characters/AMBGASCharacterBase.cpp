@@ -66,6 +66,11 @@ UCombatAttackComponent* AAMBGASCharacterBase::GetCombatAttackComponent() const
 	return FindComponentByClass<UCombatAttackComponent>();
 }
 
+UAMBCombatStyleData* AAMBGASCharacterBase::GetCurrentCombatStyle() const
+{
+	return nullptr;
+}
+
 bool AAMBGASCharacterBase::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
 {
 	HitActor = nullptr;

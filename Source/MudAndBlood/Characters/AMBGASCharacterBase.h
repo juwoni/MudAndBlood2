@@ -10,6 +10,7 @@
 class UAbilitySystemComponent;
 class UAMBAbilitySystemComponent;
 class UAMBCombatAttributeSet;
+class UAMBCombatStyleData;
 class UCombatAttackComponent;
 class UGameplayEffect;
 struct FHitResult;
@@ -49,6 +50,7 @@ public:
 	void BP_OnGASDied(AActor* DamageCauser);
 
 	virtual UCombatAttackComponent* GetCombatAttackComponent() const;
+	virtual UAMBCombatStyleData* GetCurrentCombatStyle() const;
 
 	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
