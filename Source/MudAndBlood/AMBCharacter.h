@@ -15,6 +15,7 @@ class UInputAction;
 class UAMBItemData;
 class USceneComponent;
 class UStaticMeshComponent;
+struct FHitResult;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAMBCombatStyleChangedSignature, int32, SlotIndex, EAMBCombatStyleType, CombatStyleType, UAMBCombatStyleData*, CombatStyleData);
 
@@ -89,6 +90,7 @@ protected:
 public:	
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual UCombatAttackComponent* GetCombatAttackComponent() const override;
 
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoComboAttackStart();
@@ -145,8 +147,10 @@ public:
 	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
 	virtual void CheckCombo() override;
 	virtual void CheckChargedAttack() override;
-
-	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const {return CombatAttackComponent;}
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+
+protected:
+	virtual bool TryGetAttackHitResult(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult) const override;
+	virtual bool ApplyAttackHitResult(const FHitResult& HitResult) override;
 
 };

@@ -129,21 +129,11 @@ float ACombatEnemy::GetLastDangerTime() const
 	return LastDangerTime;
 }
 
-void ACombatEnemy::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
+void ACombatEnemy::PrepareAttackTrace()
 {
-	AActor* HitActor = nullptr;
-	FVector ImpactPoint = FVector::ZeroVector;
-	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
-}
-
-bool ACombatEnemy::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
-{
-	HitActor = nullptr;
-	ImpactPoint = FVector::ZeroVector;
-
 	if (!CombatAttackComponent)
 	{
-		return false;
+		return;
 	}
 
 	CombatAttackComponent->SetMeleeTraceSettings(
@@ -152,16 +142,6 @@ bool ACombatEnemy::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceE
 		MeleeDamage,
 		MeleeKnockbackImpulse,
 		MeleeLaunchImpulse);
-
-	FHitResult HitResult;
-	const bool bHit = CombatAttackComponent->TryAttackSphereTrace(TraceStartBone, TraceEndBone, HitResult);
-	if (bHit)
-	{
-		HitActor = HitResult.GetActor();
-		ImpactPoint = HitResult.ImpactPoint;
-	}
-
-	return bHit;
 }
 
 void ACombatEnemy::CheckCombo()

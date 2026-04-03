@@ -32,6 +32,9 @@ public:
 
 	void ApplyWeaponDamage(AActor* HitActor, const FVector& ImpactPoint);
 	void SetWeaponTrace(bool isTracing);
+	float GetMeleeDamage() const { return MeleeDamage; }
+	float GetMeleeKnockbackImpulse() const { return MeleeKnockbackImpulse; }
+	float GetMeleeLaunchImpulse() const { return MeleeLaunchImpulse; }
 
 	void SetMeleeTraceSettings(float TraceDistance, float TraceRadius, float Damage, float KnockbackImpulse,
 	                           float LaunchImpulse);

@@ -3,10 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
-#include "CombatAttacker.h"
-#include "CombatDamageable.h"
 #include "Animation/AnimMontage.h"
+#include "Characters/AMBGASCharacterBase.h"
 #include "Engine/TimerHandle.h"
 #include "CombatEnemy.generated.h"
 
@@ -29,7 +27,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEnemyDied);
  *  Its bundled AI Controller runs logic through StateTree
  */
 UCLASS(abstract)
-class ACombatEnemy : public ACharacter, public ICombatAttacker, public ICombatDamageable
+class MUDANDBLOOD_API ACombatEnemy : public AAMBGASCharacterBase
 {
 	GENERATED_BODY()
 
@@ -178,15 +176,9 @@ public:
 	/** Returns the last game time we were attacked */
 	float GetLastDangerTime() const;
 
+	virtual UCombatAttackComponent* GetCombatAttackComponent() const override { return CombatAttackComponent; }
+
 public:
-
-	// ~begin ICombatAttacker interface
-
-	/** Performs a sphere trace for attack targets and returns the first valid hit. */
-	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
-
-	/** Performs an attack's collision check */
-	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 
 	/** Performs a combo attack's check to continue the string */
 	UFUNCTION(BlueprintCallable, Category="Attacker")
@@ -195,10 +187,6 @@ public:
 	/** Performs a charged attack's check to loop the charge animation */
 	UFUNCTION(BlueprintCallable, Category="Attacker")
 	virtual void CheckChargedAttack() override;
-
-	// ~end ICombatAttacker interface
-
-	// ~begin ICombatDamageable interface
 
 	/** Handles damage and knockback events */
 	virtual void ApplyDamage(float Damage, AActor* DamageCauser, const FVector& DamageLocation, const FVector& DamageImpulse) override;
@@ -212,9 +200,8 @@ public:
 	/** Allows the enemy to react to incoming attacks */
 	virtual void NotifyDanger(const FVector& DangerLocation, AActor* DangerSource) override;
 
-	// ~end ICombatDamageable interface
-
 protected:
+	virtual void PrepareAttackTrace() override;
 
 	/** Removes this character from the level after it dies */
 	void RemoveFromLevel();

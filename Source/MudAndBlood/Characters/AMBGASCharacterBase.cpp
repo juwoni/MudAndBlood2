@@ -11,6 +11,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayEffect.h"
 #include "MudAndBlood.h"
+#include "Variant_Combat/Components/CombatAttackComponent.h"
 
 AAMBGASCharacterBase::AAMBGASCharacterBase()
 {
@@ -60,36 +61,68 @@ bool AAMBGASCharacterBase::ApplyHealingToSelf(float HealingAmount, AActor* Heale
 	return ApplyHealthDeltaToTarget(AbilitySystemComponent, FMath::Abs(HealingAmount), Healer, SourceObject);
 }
 
+UCombatAttackComponent* AAMBGASCharacterBase::GetCombatAttackComponent() const
+{
+	return FindComponentByClass<UCombatAttackComponent>();
+}
+
 bool AAMBGASCharacterBase::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint)
 {
-	static_cast<void>(TraceStartBone);
-	static_cast<void>(TraceEndBone);
 	HitActor = nullptr;
 	ImpactPoint = FVector::ZeroVector;
-	return false;
+
+	PrepareAttackTrace();
+
+	FHitResult HitResult;
+	const bool bHit = TryGetAttackHitResult(TraceStartBone, TraceEndBone, HitResult);
+	if (bHit)
+	{
+		HitActor = HitResult.GetActor();
+		ImpactPoint = HitResult.ImpactPoint;
+	}
+
+	return bHit;
 }
 
 void AAMBGASCharacterBase::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
 {
-	AActor* HitActor = nullptr;
-	FVector ImpactPoint = FVector::ZeroVector;
-	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
+	PrepareAttackTrace();
+
+	FHitResult HitResult;
+	if (TryGetAttackHitResult(TraceStartBone, TraceEndBone, HitResult))
+	{
+		ApplyAttackHitResult(HitResult);
+	}
 }
 
 void AAMBGASCharacterBase::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
 {
 	static_cast<void>(TraceStartBone);
 	static_cast<void>(TraceEndBone);
+
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
+	{
+		AttackComponent->SetWeaponTrace(true);
+	}
 }
 
 void AAMBGASCharacterBase::TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
 {
-	static_cast<void>(TraceStartBone);
-	static_cast<void>(TraceEndBone);
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
+	{
+		if (AttackComponent->bWeaponTrace)
+		{
+			DoAttackTrace(TraceStartBone, TraceEndBone);
+		}
+	}
 }
 
 void AAMBGASCharacterBase::EndAttackTraceWindow()
 {
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
+	{
+		AttackComponent->SetWeaponTrace(false);
+	}
 }
 
 void AAMBGASCharacterBase::CheckCombo()
@@ -175,6 +208,43 @@ void AAMBGASCharacterBase::EndPlay(EEndPlayReason::Type EndPlayReason)
 	}
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void AAMBGASCharacterBase::PrepareAttackTrace()
+{
+}
+
+bool AAMBGASCharacterBase::TryGetAttackHitResult(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult) const
+{
+	OutHitResult = FHitResult();
+
+	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
+	{
+		return AttackComponent->TryAttackSphereTrace(TraceStartBone, TraceEndBone, OutHitResult);
+	}
+
+	return false;
+}
+
+bool AAMBGASCharacterBase::ApplyAttackHitResult(const FHitResult& HitResult)
+{
+	AActor* HitActor = HitResult.GetActor();
+	if (!IsValid(HitActor) || HitActor == this)
+	{
+		return false;
+	}
+
+	ICombatDamageable* Damageable = Cast<ICombatDamageable>(HitActor);
+	UCombatAttackComponent* AttackComponent = GetCombatAttackComponent();
+	if (!Damageable || !AttackComponent)
+	{
+		return false;
+	}
+
+	const FVector Impulse = (HitResult.ImpactNormal * -AttackComponent->GetMeleeKnockbackImpulse()) +
+		(FVector::UpVector * AttackComponent->GetMeleeLaunchImpulse());
+	Damageable->ApplyDamage(AttackComponent->GetMeleeDamage(), this, HitResult.ImpactPoint, Impulse);
+	return true;
 }
 
 void AAMBGASCharacterBase::InitializeAbilityActorInfo()

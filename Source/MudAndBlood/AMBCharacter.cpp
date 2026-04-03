@@ -69,60 +69,7 @@ void AAMBCharacter::BeginPlay()
 
 void AAMBCharacter::ProcessAttack()
 {
-	UCombatAttackComponent* combatComponent = GetCombatAttackComponent();
-	UAMBInventoryComponent* inventoryComponent = GetInventoryComponent();
-	if (!combatComponent || !inventoryComponent)
-	{
-		return;
-	}
-
-	if (!combatComponent->bWeaponTrace)
-	{
-		return;
-	}
-
-	UAMBItemData* selectedItem = inventoryComponent->GetSelectedItem();
-	if (!selectedItem)
-	{
-		return;
-	}
-
-	AActor* hitActor = nullptr;
-	bool isHit = false;
-
-	switch (selectedItem->CombatStyleType)
-	{
-	case EAMBCombatStyleType::Unarmed:
-		{
-			FHitResult HitResult;
-			isHit = combatComponent->TryAttackSphereTrace("hand_r", "None", HitResult);
-			if (isHit)
-			{
-				hitActor = HitResult.GetActor();
-			}
-			combatComponent->bWeaponTrace = false;
-			break;
-		}
-	case EAMBCombatStyleType::Sword:
-		{
-			FHitResult HitResult;
-			isHit = combatComponent->TryAttackBoxTrace(HitResult);
-			if (isHit)
-			{
-				hitActor = HitResult.GetActor();
-			}
-		}
-		break;
-	case EAMBCombatStyleType::Bow:
-		break;
-	default:
-		break;
-	}
-
-	if (isHit)
-	{
-		ApplyCurrentWeaponDamageToTarget(hitActor);
-	}
+	DoAttackTrace(NAME_None, NAME_None);
 }
 
 
@@ -364,6 +311,52 @@ bool AAMBCharacter::ApplyCurrentWeaponDamageToTarget(AActor* TargetActor)
 	}
 
 	return ApplyDamageToTarget(TargetActor, DamageAmount, this, this);
+}
+
+UCombatAttackComponent* AAMBCharacter::GetCombatAttackComponent() const
+{
+	return CombatAttackComponent;
+}
+
+bool AAMBCharacter::TryGetAttackHitResult(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult) const
+{
+	static_cast<void>(TraceStartBone);
+	static_cast<void>(TraceEndBone);
+
+	OutHitResult = FHitResult();
+
+	UCombatAttackComponent* CombatComponent = GetCombatAttackComponent();
+	UAMBInventoryComponent* InventoryComponentRef = GetInventoryComponent();
+	if (!CombatComponent || !InventoryComponentRef || !CombatComponent->bWeaponTrace)
+	{
+		return false;
+	}
+
+	UAMBItemData* SelectedItem = InventoryComponentRef->GetSelectedItem();
+	if (!SelectedItem)
+	{
+		return false;
+	}
+
+	switch (SelectedItem->CombatStyleType)
+	{
+	case EAMBCombatStyleType::Unarmed:
+		{
+			const bool bHit = CombatComponent->TryAttackSphereTrace(TEXT("hand_r"), NAME_None, OutHitResult);
+			CombatComponent->SetWeaponTrace(false);
+			return bHit;
+		}
+	case EAMBCombatStyleType::Sword:
+		return CombatComponent->TryAttackBoxTrace(OutHitResult);
+	case EAMBCombatStyleType::Bow:
+	default:
+		return false;
+	}
+}
+
+bool AAMBCharacter::ApplyAttackHitResult(const FHitResult& HitResult)
+{
+	return ApplyCurrentWeaponDamageToTarget(HitResult.GetActor());
 }
 
 void AAMBCharacter::DoComboAttackStart()

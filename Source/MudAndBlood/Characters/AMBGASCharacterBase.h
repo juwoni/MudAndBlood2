@@ -10,7 +10,9 @@
 class UAbilitySystemComponent;
 class UAMBAbilitySystemComponent;
 class UAMBCombatAttributeSet;
+class UCombatAttackComponent;
 class UGameplayEffect;
+struct FHitResult;
 
 UCLASS(Blueprintable, BlueprintType)
 class MUDANDBLOOD_API AAMBGASCharacterBase : public ACharacter, public IAbilitySystemInterface, public ICombatAttacker, public ICombatDamageable
@@ -46,6 +48,8 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Combat|Damage", meta=(DisplayName="On GAS Died"))
 	void BP_OnGASDied(AActor* DamageCauser);
 
+	virtual UCombatAttackComponent* GetCombatAttackComponent() const;
+
 	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
 	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
 	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
@@ -77,6 +81,9 @@ protected:
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
+	virtual void PrepareAttackTrace();
+	virtual bool TryGetAttackHitResult(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult) const;
+	virtual bool ApplyAttackHitResult(const FHitResult& HitResult);
 
 	void InitializeAbilityActorInfo();
 
