@@ -127,7 +127,7 @@ public:
 	int32 GetCurrentCombatSlotIndex() const { return CurrentCombatSlotIndex; }
 
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
-	virtual UAMBCombatStyleData* GetCurrentCombatStyle() const override { return CurrentCombatStyle; }
+	virtual UAMBCombatStyleData* GetCurrentCombatStyle() const override;
 
 	UFUNCTION(BlueprintPure, Category="Inventory")
 	UStaticMeshComponent* GetEquippedWeaponMesh() const { return EquippedItemMeshComponent; }

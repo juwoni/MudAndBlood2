@@ -284,6 +284,17 @@ UAMBItemData* AAMBCharacter::GetSelectedItemData() const
 	return InventoryComponent ? InventoryComponent->GetSelectedItem() : nullptr;
 }
 
+UAMBCombatStyleData* AAMBCharacter::GetCurrentCombatStyle() const
+{
+	const UAMBItemData* SelectedItem = GetSelectedItemData();
+	if (SelectedItem && SelectedItem->CanApplyCombatStyleOnSelect())
+	{
+		return SelectedItem->CombatStyleData;
+	}
+
+	return CurrentCombatStyle;
+}
+
 float AAMBCharacter::GetCurrentEquippedItemBaseDamage() const
 {
 	const UAMBItemData* ItemData = GetSelectedItemData();
