@@ -12,6 +12,7 @@
 #include "GameplayEffect.h"
 #include "MudAndBlood.h"
 #include "Variant_Combat/Components/CombatAttackComponent.h"
+#include "Variant_Combat/Data/AMBCombatStyleData.h"
 
 AAMBGASCharacterBase::AAMBGASCharacterBase()
 {
@@ -21,7 +22,7 @@ AAMBGASCharacterBase::AAMBGASCharacterBase()
 	AbilitySystemComponent = CreateDefaultSubobject<UAMBAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->AddAttributeSetSubobject(CombatAttributeSet.Get());
 	
-	CombatAttributeSet = CreateDefaultSubobject<UAMBCombatAttributeSet>(TEXT("CombatAttributeSet"));
+	CombatAttributeSet = CreateDefaultSubobject<UAMBCombatAttributeSet>(TEXT("CombatAttributeeSet"));
 	DamageGameplayEffectClass = UAMBGameplayEffect_Damage::StaticClass();
 }
 
@@ -223,12 +224,28 @@ bool AAMBGASCharacterBase::TryGetAttackHitResult(FName TraceStartBone, FName Tra
 {
 	OutHitResult = FHitResult();
 
-	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
+	const UAMBCombatStyleData* CombatStyleData = GetCurrentCombatStyle();
+	UCombatAttackComponent* AttackComponent = GetCombatAttackComponent();
+	if (!CombatStyleData || !AttackComponent || !AttackComponent->bWeaponTrace)
 	{
-		return AttackComponent->TryAttackSphereTrace(TraceStartBone, TraceEndBone, OutHitResult);
+		return false;
 	}
 
-	return false;
+	switch (CombatStyleData->CombatStyleType)
+	{
+	case EAMBCombatStyleType::Unarmed:
+		{
+			const FName ResolvedTraceStartBone = TraceStartBone.IsNone() ? TEXT("hand_r") : TraceStartBone;
+			const bool bHit = AttackComponent->TryAttackSphereTrace(ResolvedTraceStartBone, TraceEndBone, OutHitResult);
+			AttackComponent->SetWeaponTrace(false);
+			return bHit;
+		}
+	case EAMBCombatStyleType::Sword:
+		return AttackComponent->TryAttackBoxTrace(OutHitResult);
+	case EAMBCombatStyleType::Bow:
+	default:
+		return false;
+	}
 }
 
 bool AAMBGASCharacterBase::ApplyAttackHitResult(const FHitResult& HitResult)

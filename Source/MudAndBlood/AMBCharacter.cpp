@@ -318,42 +318,6 @@ UCombatAttackComponent* AAMBCharacter::GetCombatAttackComponent() const
 	return CombatAttackComponent;
 }
 
-bool AAMBCharacter::TryGetAttackHitResult(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult) const
-{
-	static_cast<void>(TraceStartBone);
-	static_cast<void>(TraceEndBone);
-
-	OutHitResult = FHitResult();
-
-	UCombatAttackComponent* CombatComponent = GetCombatAttackComponent();
-	UAMBInventoryComponent* InventoryComponentRef = GetInventoryComponent();
-	if (!CombatComponent || !InventoryComponentRef || !CombatComponent->bWeaponTrace)
-	{
-		return false;
-	}
-
-	UAMBItemData* SelectedItem = InventoryComponentRef->GetSelectedItem();
-	if (!SelectedItem)
-	{
-		return false;
-	}
-
-	switch (SelectedItem->CombatStyleType)
-	{
-	case EAMBCombatStyleType::Unarmed:
-		{
-			const bool bHit = CombatComponent->TryAttackSphereTrace(TEXT("hand_r"), NAME_None, OutHitResult);
-			CombatComponent->SetWeaponTrace(false);
-			return bHit;
-		}
-	case EAMBCombatStyleType::Sword:
-		return CombatComponent->TryAttackBoxTrace(OutHitResult);
-	case EAMBCombatStyleType::Bow:
-	default:
-		return false;
-	}
-}
-
 bool AAMBCharacter::ApplyAttackHitResult(const FHitResult& HitResult)
 {
 	return ApplyCurrentWeaponDamageToTarget(HitResult.GetActor());

@@ -77,6 +77,14 @@ void ACombatEnemy::DoAIComboAttack()
 
 		NotifyAttackCompleted();
 	}
+	else if (TargetComboCount > 1)
+	{
+		FGameplayEventData ComboInputPayload;
+		ComboInputPayload.EventTag = TAG_Event_Attack_Combo_Input;
+		ComboInputPayload.Instigator = this;
+		ComboInputPayload.Target = this;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Input, ComboInputPayload);
+	}
 }
 
 void ACombatEnemy::DoAIChargedAttack()
@@ -157,7 +165,13 @@ void ACombatEnemy::CheckCombo()
 {
 	++CurrentComboAttack;
 
-	if (CurrentComboAttack < TargetComboCount)
+	FGameplayEventData CheckPayload;
+	CheckPayload.EventTag = TAG_Event_Attack_Combo_Check;
+	CheckPayload.Instigator = this;
+	CheckPayload.Target = this;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Check, CheckPayload);
+
+	if ((CurrentComboAttack + 1) < TargetComboCount)
 	{
 		FGameplayEventData ComboInputPayload;
 		ComboInputPayload.EventTag = TAG_Event_Attack_Combo_Input;
@@ -165,12 +179,6 @@ void ACombatEnemy::CheckCombo()
 		ComboInputPayload.Target = this;
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Input, ComboInputPayload);
 	}
-
-	FGameplayEventData CheckPayload;
-	CheckPayload.EventTag = TAG_Event_Attack_Combo_Check;
-	CheckPayload.Instigator = this;
-	CheckPayload.Target = this;
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Attack_Combo_Check, CheckPayload);
 }
 
 void ACombatEnemy::CheckChargedAttack()

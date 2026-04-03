@@ -150,7 +150,6 @@ public:
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
 protected:
-	virtual bool TryGetAttackHitResult(FName TraceStartBone, FName TraceEndBone, FHitResult& OutHitResult) const override;
 	virtual bool ApplyAttackHitResult(const FHitResult& HitResult) override;
 
 };
