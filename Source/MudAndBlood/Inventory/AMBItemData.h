@@ -6,6 +6,7 @@
 #include "AMBItemData.generated.h"
 
 class UStaticMesh;
+class UTexture2D;
 
 UCLASS(BlueprintType)
 class MUDANDBLOOD_API UAMBItemData : public UPrimaryDataAsset
@@ -15,6 +16,9 @@ class MUDANDBLOOD_API UAMBItemData : public UPrimaryDataAsset
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item")
 	FText ItemName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|UI")
+	TObjectPtr<UTexture2D> ItemIconTexture = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Item|Equip")
 	TObjectPtr<UStaticMesh> EquippedMesh = nullptr;

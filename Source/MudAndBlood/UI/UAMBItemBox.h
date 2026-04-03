@@ -8,6 +8,7 @@
 
 class UHorizontalBox;
 class UAMBItemData;
+class UImage;
 class UTextBlock;
 /**
  * 
@@ -22,6 +23,9 @@ class MUDANDBLOOD_API UItemBoxWidget : public UUserWidget
 public:
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget), Category="HUD|Inventory")
 	TObjectPtr<UTextBlock> ItemNameText;
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional), Category="HUD|Inventory")
+	TObjectPtr<UImage> ItemIcon;
 	
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget), Category="HUD|Inventory")
 	TObjectPtr<UHorizontalBox> ItemContainer;

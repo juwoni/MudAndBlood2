@@ -64,7 +64,7 @@ void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 
 	UAMBItemData* Item3 = LoadObject<UAMBItemData>(
 		nullptr,
-		TEXT("/Game/MudAndBlood/DA_Item_Sword1.DA_Item_Sword1")
+		TEXT("/Game/MudAndBlood/DA_Item_Kinghtly_Sword.DA_Item_Kinghtly_Sword")
 	);
 
 	if (Item2)

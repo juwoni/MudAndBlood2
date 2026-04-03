@@ -4,6 +4,7 @@
 #include "UAMBItemBox.h"
 
 #include "Components/HorizontalBox.h"
+#include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Inventory/AMBItemData.h"
 
@@ -27,5 +28,13 @@ void UItemBoxWidget::SetItemData(UAMBItemData* ItemData)
 		ItemNameText->SetText(DisplayName);
 	}
 
-	ItemContainer->SetVisibility(ItemData ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	if (ItemIcon)
+	{
+		ItemIcon->SetBrushFromTexture(ItemData ? ItemData->ItemIconTexture : nullptr, true);
+	}
+
+	if (ItemContainer)
+	{
+		ItemContainer->SetVisibility(ItemData ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	}
 }
