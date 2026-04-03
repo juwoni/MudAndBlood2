@@ -51,7 +51,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	void AddItem(UAMBItemData* NewItem);
+	bool AddItem(UAMBItemData* NewItem, bool bBroadcastInventoryChanged = true);
+	bool AddItem(const TCHAR* ItemPath, bool bBroadcastInventoryChanged = true);
+	bool AddItem(int32 SlotIndex, const TCHAR* ItemPath, bool bBroadcastInventoryChanged = true);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Inventory", meta=(ClampMin=1))
 	int32 DefaultSlotCount = 6;

@@ -18,11 +18,11 @@ void UAMBInventoryComponent::BeginPlay()
 	}
 }
 
-void UAMBInventoryComponent::AddItem(UAMBItemData* NewItem)
+bool UAMBInventoryComponent::AddItem(UAMBItemData* NewItem, bool bBroadcastInventoryChanged)
 {
 	if (!NewItem)
 	{
-		return;
+		return false;
 	}
 
 	const int32 EmptySlotIndex = InventoryItems.IndexOfByPredicate([](const TObjectPtr<UAMBItemData>& Item)
@@ -32,15 +32,50 @@ void UAMBInventoryComponent::AddItem(UAMBItemData* NewItem)
 
 	if (EmptySlotIndex != INDEX_NONE)
 	{
-		AddItemToSlot(EmptySlotIndex, NewItem);
-		return;
+		return AddItemToSlot(EmptySlotIndex, NewItem, bBroadcastInventoryChanged);
 	}
 
 	const int32 NewSlotIndex = InventoryItems.Add(NewItem);
 	OnInventorySlotChanged.Broadcast(NewSlotIndex, NewItem);
-	OnInventoryChanged.Broadcast();
+	if (bBroadcastInventoryChanged)
+	{
+		OnInventoryChanged.Broadcast();
+	}
+
+	return true;
 }
 
+bool UAMBInventoryComponent::AddItem(const TCHAR* ItemPath, bool bBroadcastInventoryChanged)
+{
+	if (!ItemPath)
+	{
+		return false;
+	}
+
+	UAMBItemData* ItemData = LoadObject<UAMBItemData>(nullptr, ItemPath);
+	if (!ItemData)
+	{
+		return false;
+	}
+
+	return AddItem(ItemData, bBroadcastInventoryChanged);
+}
+
+bool UAMBInventoryComponent::AddItem(int32 SlotIndex, const TCHAR* ItemPath, bool bBroadcastInventoryChanged)
+{
+	if (!ItemPath)
+	{
+		return false;
+	}
+
+	UAMBItemData* ItemData = LoadObject<UAMBItemData>(nullptr, ItemPath);
+	if (!ItemData)
+	{
+		return false;
+	}
+
+	return AddItemToSlot(SlotIndex, ItemData, bBroadcastInventoryChanged);
+}
 
 void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 {
@@ -52,35 +87,9 @@ void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 		SelectedSlotIndex = INDEX_NONE;
 	}
 
-	UAMBItemData* Item1 = LoadObject<UAMBItemData>(
-		nullptr,
-		TEXT("/Game/MudAndBlood/DA_Item_Sword.DA_Item_Sword")
-	);
-
-	UAMBItemData* Item2 = LoadObject<UAMBItemData>(
-		nullptr,
-		TEXT("/Game/MudAndBlood/DA_Item_Unarmed.DA_Item_Unarmed")
-	);
-
-	UAMBItemData* Item3 = LoadObject<UAMBItemData>(
-		nullptr,
-		TEXT("/Game/MudAndBlood/DA_Item_Kinghtly_Sword.DA_Item_Kinghtly_Sword")
-	);
-
-	if (Item2)
-	{
-		AddItemToSlot(0, Item2, false);
-	}
-
-	if (Item1)
-	{
-		AddItemToSlot(1, Item1, false);
-	}
-
-	if (Item3)
-	{
-		AddItemToSlot(2, Item3, false);
-	}
+	// AddItem(TEXT("/Game/MudAndBlood/DA_Item_Unarmed.DA_Item_Unarmed"), false);
+	AddItem(TEXT("/Game/MudAndBlood/DA_Item_Sword.DA_Item_Sword"), false);
+	AddItem(TEXT("/Game/MudAndBlood/DA_Item_Kinghtly_Sword.DA_Item_Kinghtly_Sword"), false);
 
 	OnInventoryChanged.Broadcast();
 }
