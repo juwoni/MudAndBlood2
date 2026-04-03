@@ -43,6 +43,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
 	TObjectPtr<UAMBCombatStyleData> DefaultCombatStyle;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
+	TObjectPtr<UAMBCombatStyleData> UnarmedCombatStyle;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
+	TObjectPtr<UAMBCombatStyleData> SwordCombatStyle;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
+	TObjectPtr<UAMBCombatStyleData> BowCombatStyle;
+
 	UPROPERTY(EditAnywhere, Category ="Input")
 	TObjectPtr<UInputAction> ComboAttackAction;
 
@@ -74,6 +83,7 @@ protected:
 	void UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag);
 	bool TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const;
 	UAMBCombatStyleData* GetConfiguredCombatStyle(EAMBCombatStyleType CombatStyleType) const;
+	UAMBCombatStyleData* GetConfiguredCombatSlotStyle(int32 SlotIndex) const;
 	EAMBCombatStyleType ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const;
 
 public:	

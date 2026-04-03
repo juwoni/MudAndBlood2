@@ -50,16 +50,14 @@ void AAMBCharacter::BeginPlay()
 		UpdateEquippedItemMesh(InventoryComponent->GetSelectedItem());
 	}
 
+	if (!DefaultCombatStyle)
+	{
+		DefaultCombatStyle = UnarmedCombatStyle;
+	}
+
 	if (DefaultCombatStyle)
 	{
 		SetCombatStyle(DefaultCombatStyle);
-		return;
-	}
-
-	if (CombatSlot1Style)
-	{
-		CurrentCombatSlotIndex = 1;
-		SetCombatStyle(CombatSlot1Style);
 		return;
 	}
 
@@ -293,6 +291,22 @@ UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatStyle(EAMBCombatStyleType
 	}
 }
 
+UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatSlotStyle(int32 SlotIndex) const
+{
+	if (!InventoryComponent)
+	{
+		return nullptr;
+	}
+
+	const UAMBItemData* ItemData = InventoryComponent->GetItemInSlot(SlotIndex);
+	if (!ItemData || !ItemData->CanApplyCombatStyleOnSelect())
+	{
+		return nullptr;
+	}
+
+	return ItemData->CombatStyleData;
+}
+
 EAMBCombatStyleType AAMBCharacter::ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const
 {
 	if (!CombatStyleData)
@@ -385,14 +399,15 @@ void AAMBCharacter::DoChargedAttackEnd()
 
 void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 {
-	if (CurrentCombatStyle == NewCombatStyle)
+	UAMBCombatStyleData* ResolvedCombatStyle = NewCombatStyle ? NewCombatStyle : UnarmedCombatStyle.Get();
+	if (CurrentCombatStyle == ResolvedCombatStyle)
 	{
 		return;
 	}
 
 	ClearGrantedCombatAbilities();
 
-	CurrentCombatStyle = NewCombatStyle;
+	CurrentCombatStyle = ResolvedCombatStyle;
 	UpdateCombatStyleTag(CurrentCombatStyle ? CurrentCombatStyle->CombatStyleTag : FGameplayTag());
 	CurrentCombatStyleType = ResolveCombatStyleType(CurrentCombatStyle);
 
@@ -414,17 +429,18 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 
 void AAMBCharacter::SetDefaultCombatStyle(UAMBCombatStyleData* NewDefaultCombatStyle, int32 SourceSlotIndex)
 {
+	UAMBCombatStyleData* ResolvedDefaultCombatStyle = NewDefaultCombatStyle ? NewDefaultCombatStyle : UnarmedCombatStyle.Get();
 	const bool bSlotChanged = SourceSlotIndex != INDEX_NONE && CurrentCombatSlotIndex != SourceSlotIndex;
-	const bool bStyleChanged = CurrentCombatStyle != NewDefaultCombatStyle;
+	const bool bStyleChanged = CurrentCombatStyle != ResolvedDefaultCombatStyle;
 
-	DefaultCombatStyle = NewDefaultCombatStyle;
+	DefaultCombatStyle = ResolvedDefaultCombatStyle;
 
 	if (SourceSlotIndex != INDEX_NONE)
 	{
 		CurrentCombatSlotIndex = SourceSlotIndex;
 	}
 
-	SetCombatStyle(NewDefaultCombatStyle);
+	SetCombatStyle(DefaultCombatStyle);
 
 	if (!bStyleChanged && bSlotChanged)
 	{
