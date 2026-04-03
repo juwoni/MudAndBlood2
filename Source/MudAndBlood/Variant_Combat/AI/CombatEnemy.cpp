@@ -498,9 +498,9 @@ void ACombatEnemy::HandleHealthChanged(float OldHealth, float NewHealth, AActor*
 		LifeBarWidget->SetLifePercentage(GetMaxHealth() > 0.0f ? NewHealth / GetMaxHealth() : 0.0f);
 	}
 
-	if (NewHealth < OldHealth && NewHealth > 0.0f)
-	{
-		GetMesh()->SetPhysicsBlendWeight(0.5f);
-		GetMesh()->SetBodySimulatePhysics(PelvisBoneName, false);
-	}
+	// if (NewHealth < OldHealth && NewHealth > 0.0f)
+	// {
+	// 	GetMesh()->SetPhysicsBlendWeight(0.5f);
+	// 	GetMesh()->SetBodySimulatePhysics(PelvisBoneName, false);
+	// }
 }
