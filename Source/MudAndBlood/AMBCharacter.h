@@ -43,21 +43,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
 	TObjectPtr<UAMBCombatStyleData> DefaultCombatStyle;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
-	TObjectPtr<UAMBCombatStyleData> UnarmedCombatStyle;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
-	TObjectPtr<UAMBCombatStyleData> SwordCombatStyle;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Style")
-	TObjectPtr<UAMBCombatStyleData> BowCombatStyle;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Slots")
-	TObjectPtr<UAMBCombatStyleData> CombatSlot1Style;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat|Slots")
-	TObjectPtr<UAMBCombatStyleData> CombatSlot2Style;
-
 	UPROPERTY(EditAnywhere, Category ="Input")
 	TObjectPtr<UInputAction> ComboAttackAction;
 
@@ -89,23 +74,14 @@ protected:
 	void UpdateCombatStyleTag(const FGameplayTag& NewCombatStyleTag);
 	bool TryActivateCombatAbilityByInputTag(const FGameplayTag& InputTag) const;
 	UAMBCombatStyleData* GetConfiguredCombatStyle(EAMBCombatStyleType CombatStyleType) const;
-	UAMBCombatStyleData* GetConfiguredCombatSlotStyle(int32 SlotIndex) const;
 	EAMBCombatStyleType ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const;
 
 public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-	
-	
-
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoComboAttackStart();
-
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoComboAttackEnd();
 
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoChargedAttackStart();
@@ -127,16 +103,10 @@ public:
 	void EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType);
 
 	UFUNCTION(BlueprintCallable, Category="Combat|Style")
-	void SetAttackType(EAMBCombatStyleType CombatStyleType);
-
-	UFUNCTION(BlueprintCallable, Category="Combat|Style")
 	void EquipCombatSlot(int32 SlotIndex);
 
 	UFUNCTION()
 	void HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* ItemData);
-
-	UFUNCTION(BlueprintPure, Category="Combat|Style")
-	FGameplayTag GetCurrentCombatStyleTag() const { return CurrentCombatStyleTag; }
 
 	UFUNCTION(BlueprintPure, Category="Combat|Style")
 	EAMBCombatStyleType GetCurrentCombatStyleType() const { return CurrentCombatStyleType; }
@@ -163,15 +133,10 @@ public:
 	bool ApplyCurrentWeaponDamageToTarget(AActor* TargetActor);
 
 	virtual bool SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor, FVector& ImpactPoint) override;
-	virtual void DoAttackTrace(FName TraceStartBone, FName TraceEndBone) override;
-	virtual void BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
-	virtual void TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone) override;
-	virtual void EndAttackTraceWindow() override;
 	virtual void CheckCombo() override;
 	virtual void CheckChargedAttack() override;
 
 	FORCEINLINE UCombatAttackComponent* GetCombatAttackComponent() const {return CombatAttackComponent;}
 	FORCEINLINE UAMBInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
-	FORCEINLINE UStaticMeshComponent* GetEquippedItemMeshComponent() const { return EquippedItemMeshComponent; }
 
 };

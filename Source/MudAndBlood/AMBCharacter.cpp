@@ -69,12 +69,6 @@ void AAMBCharacter::BeginPlay()
 	}
 }
 
-// Called every frame
-void AAMBCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
 void AAMBCharacter::ProcessAttack()
 {
 	UCombatAttackComponent* combatComponent = GetCombatAttackComponent();
@@ -299,19 +293,6 @@ UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatStyle(EAMBCombatStyleType
 	}
 }
 
-UAMBCombatStyleData* AAMBCharacter::GetConfiguredCombatSlotStyle(int32 SlotIndex) const
-{
-	switch (SlotIndex)
-	{
-	case 1:
-		return CombatSlot1Style;
-	case 2:
-		return CombatSlot2Style;
-	default:
-		return nullptr;
-	}
-}
-
 EAMBCombatStyleType AAMBCharacter::ResolveCombatStyleType(const UAMBCombatStyleData* CombatStyleData) const
 {
 	if (!CombatStyleData)
@@ -387,11 +368,6 @@ void AAMBCharacter::DoComboAttackStart()
 	TryActivateCombatAbilityByInputTag(TAG_Input_Attack_Light);
 }
 
-void AAMBCharacter::DoComboAttackEnd()
-{
-	UE_LOG(LogMudAndBlood, Verbose,
-	       TEXT("%s received DoComboAttackEnd, but combo end is not routed directly outside GAS."), *GetNameSafe(this));
-}
 
 void AAMBCharacter::DoChargedAttackStart()
 {
@@ -524,10 +500,6 @@ void AAMBCharacter::EquipCombatStyleByType(EAMBCombatStyleType CombatStyleType)
 	SetCombatStyle(CombatStyle);
 }
 
-void AAMBCharacter::SetAttackType(EAMBCombatStyleType CombatStyleType)
-{
-	EquipCombatStyleByType(CombatStyleType);
-}
 
 void AAMBCharacter::EquipCombatSlot(int32 SlotIndex)
 {
@@ -557,13 +529,6 @@ void AAMBCharacter::HandleInventorySlotSelected(int32 SlotIndex, UAMBItemData* I
 	UpdateEquippedItemMesh(ItemData);
 }
 
-void AAMBCharacter::DoAttackTrace(FName TraceStartBone, FName TraceEndBone)
-{
-	AActor* HitActor = nullptr;
-	FVector ImpactPoint = FVector::ZeroVector;
-	SphereTraceMultiForObjects(TraceStartBone, TraceEndBone, HitActor, ImpactPoint);
-}
-
 bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName TraceEndBone, AActor*& HitActor,
                                                FVector& ImpactPoint)
 {
@@ -586,29 +551,6 @@ bool AAMBCharacter::SphereTraceMultiForObjects(FName TraceStartBone, FName Trace
 	return false;
 }
 
-void AAMBCharacter::BeginAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
-{
-	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
-	{
-		AttackComponent->BeginAttackTraceWindow(TraceStartBone, TraceEndBone);
-	}
-}
-
-void AAMBCharacter::TickAttackTraceWindow(FName TraceStartBone, FName TraceEndBone)
-{
-	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
-	{
-		AttackComponent->TickAttackTraceWindow(TraceStartBone, TraceEndBone);
-	}
-}
-
-void AAMBCharacter::EndAttackTraceWindow()
-{
-	if (UCombatAttackComponent* AttackComponent = GetCombatAttackComponent())
-	{
-		AttackComponent->EndAttackTraceWindow();
-	}
-}
 
 void AAMBCharacter::CheckCombo()
 {
