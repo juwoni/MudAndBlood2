@@ -63,6 +63,7 @@ protected:
 
 private:
 	bool AddItemToSlot(int32 SlotIndex, UAMBItemData* ItemData, bool bBroadcastInventoryChanged = true);
+	void ClearSelectedSlot();
 	bool IsValidInventorySlot(int32 SlotIndex) const;
 	void ApplyCombatStyleFromItem(int32 SlotIndex, UAMBItemData* ItemData);
 	AAMBCharacter* GetOwnerCharacter() const;

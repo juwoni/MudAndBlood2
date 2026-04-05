@@ -12,10 +12,7 @@ void UAMBInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (InventoryItems.Num() < DefaultSlotCount)
-	{
-		InventoryItems.SetNum(DefaultSlotCount);
-	}
+	InitializeInventory(DefaultSlotCount);
 }
 
 bool UAMBInventoryComponent::AddItem(UAMBItemData* NewItem, bool bBroadcastInventoryChanged)
@@ -79,17 +76,19 @@ bool UAMBInventoryComponent::AddItem(int32 SlotIndex, const TCHAR* ItemPath, boo
 
 void UAMBInventoryComponent::InitializeInventory(int32 NewSlotCount)
 {
-	static_cast<void>(NewSlotCount);
-	InventoryItems.Init(nullptr, DefaultSlotCount);
+	const TArray<TObjectPtr<UAMBItemData>> ConfiguredItems = InventoryItems;
+	const int32 SlotCount = FMath::Max3(1, NewSlotCount, ConfiguredItems.Num());
+	InventoryItems.Init(nullptr, SlotCount);
 
-	if (!IsValidInventorySlot(SelectedSlotIndex))
+	SelectedSlotIndex = INDEX_NONE;
+
+	for (int32 SlotIndex = 0; SlotIndex < ConfiguredItems.Num(); ++SlotIndex)
 	{
-		SelectedSlotIndex = INDEX_NONE;
+		if (UAMBItemData* ItemData = ConfiguredItems[SlotIndex])
+		{
+			AddItemToSlot(SlotIndex, ItemData, false);
+		}
 	}
-
-	// AddItem(TEXT("/Game/MudAndBlood/DA_Item_Unarmed.DA_Item_Unarmed"), false);
-	AddItem(TEXT("/Game/MudAndBlood/DA_Item_Sword.DA_Item_Sword"), false);
-	AddItem(TEXT("/Game/MudAndBlood/DA_Item_Kinghtly_Sword.DA_Item_Kinghtly_Sword"), false);
 
 	OnInventoryChanged.Broadcast();
 }
@@ -116,8 +115,15 @@ bool UAMBInventoryComponent::AddItemToSlot(int32 SlotIndex, UAMBItemData* ItemDa
 
 	if (SelectedSlotIndex == SlotIndex)
 	{
-		ApplyCombatStyleFromItem(SlotIndex, ItemData);
-		OnInventorySlotSelected.Broadcast(SlotIndex, ItemData);
+		if (ItemData)
+		{
+			ApplyCombatStyleFromItem(SlotIndex, ItemData);
+			OnInventorySlotSelected.Broadcast(SlotIndex, ItemData);
+		}
+		else
+		{
+			ClearSelectedSlot();
+		}
 	}
 
 	return true;
@@ -130,9 +136,21 @@ bool UAMBInventoryComponent::SelectInventorySlot(int32 SlotIndex)
 		return false;
 	}
 
+	if (SelectedSlotIndex == SlotIndex)
+	{
+		ClearSelectedSlot();
+		return true;
+	}
+
 	SelectedSlotIndex = SlotIndex;
 
 	UAMBItemData* SelectedItem = GetItemInSlot(SlotIndex);
+	if (!SelectedItem)
+	{
+		ClearSelectedSlot();
+		return true;
+	}
+
 	ApplyCombatStyleFromItem(SlotIndex, SelectedItem);
 	OnInventorySlotSelected.Broadcast(SlotIndex, SelectedItem);
 
@@ -152,6 +170,18 @@ UAMBItemData* UAMBInventoryComponent::GetItemInSlot(int32 SlotIndex) const
 UAMBItemData* UAMBInventoryComponent::GetSelectedItem() const
 {
 	return GetItemInSlot(SelectedSlotIndex);
+}
+
+void UAMBInventoryComponent::ClearSelectedSlot()
+{
+	SelectedSlotIndex = INDEX_NONE;
+
+	if (AAMBCharacter* Character = GetOwnerCharacter())
+	{
+		Character->SetDefaultCombatStyle(nullptr, INDEX_NONE);
+	}
+
+	OnInventorySlotSelected.Broadcast(INDEX_NONE, nullptr);
 }
 
 bool UAMBInventoryComponent::IsValidInventorySlot(int32 SlotIndex) const

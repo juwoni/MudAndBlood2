@@ -398,15 +398,11 @@ void AAMBCharacter::SetCombatStyle(UAMBCombatStyleData* NewCombatStyle)
 void AAMBCharacter::SetDefaultCombatStyle(UAMBCombatStyleData* NewDefaultCombatStyle, int32 SourceSlotIndex)
 {
 	UAMBCombatStyleData* ResolvedDefaultCombatStyle = NewDefaultCombatStyle ? NewDefaultCombatStyle : UnarmedCombatStyle.Get();
-	const bool bSlotChanged = SourceSlotIndex != INDEX_NONE && CurrentCombatSlotIndex != SourceSlotIndex;
+	const bool bSlotChanged = CurrentCombatSlotIndex != SourceSlotIndex;
 	const bool bStyleChanged = CurrentCombatStyle != ResolvedDefaultCombatStyle;
 
 	DefaultCombatStyle = ResolvedDefaultCombatStyle;
-
-	if (SourceSlotIndex != INDEX_NONE)
-	{
-		CurrentCombatSlotIndex = SourceSlotIndex;
-	}
+	CurrentCombatSlotIndex = SourceSlotIndex;
 
 	SetCombatStyle(DefaultCombatStyle);
 
